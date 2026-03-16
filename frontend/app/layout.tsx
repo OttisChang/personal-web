@@ -1,0 +1,31 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import ThemeToggle from "./components/ThemeToggle";
+
+export const metadata: Metadata = {
+  title: "個人網站 | AI 前端工程師",
+  description: "AI 產品前端開發工程師的個人介紹網站",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="zh-TW" suppressHydrationWarning>
+      {/* 防閃爍腳本：在頁面渲染前就套用正確的 dark class */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('theme'),d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(t===null&&d)){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
+      </head>
+      <body className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
+        <ThemeToggle />
+        {children}
+      </body>
+    </html>
+  );
+}

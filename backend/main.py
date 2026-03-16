@@ -1,0 +1,79 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
+
+app = FastAPI(title="Personal Website API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Experience(BaseModel):
+    period: str
+    company: str
+    title: str
+    items: List[str]
+
+
+class Education(BaseModel):
+    school: str
+    department: str
+    period: str
+
+
+class Profile(BaseModel):
+    name: str
+    intro: str
+    experiences: List[Experience]
+    education: Education
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Personal Website API is running"}
+
+
+@app.get("/api/profile", response_model=Profile)
+def get_profile():
+    return Profile(
+        name="個人簡介",
+        intro="您好，我目前任職於金融業，擔任 AI 產品前端開發工程師。",
+        experiences=[
+            Experience(
+                period="2025年5月 - 現在",
+                company="凱基金控",
+                title="AI 開發工程師",
+                items=[
+                    "使用 React、Next.js、TypeScript、Tailwind CSS 與 Shadcn UI 開發公司內部 AI 平台，與設計師跨部門協作，客製化元件、畫面，從 0 到 1 建構整體前端架構。",
+                    "透過 Azure DevOps 協助自動化部署流程，持續釋出新版本。",
+                ],
+            ),
+            Experience(
+                period="2024年10月 - 2025年2月・5 個月",
+                company="緯育股份有限公司",
+                title="AI 工程師",
+                items=[
+                    "模型優化：微調 YOLO 模型，提升狗狗情緒辨識的準確度，提供更好的分析結果。",
+                    "前端開發與部署：獨立開發專案網頁前端（HTML、CSS、JavaScript），並採用響應式設計，使網站可適應桌機、平板與手機等不同裝置。前端部署至 GCP Storage，確保 24 小時穩定存取。",
+                    "後端開發與 API 設計：使用 Flask 和 Python 開發後端應用，整合 YOLO 影像辨識模型，設計 API 供前端透過 JavaScript Fetch API 發送請求，處理圖片分析並回傳辨識結果。",
+                    "容器化與雲端部署：透過 Docker 封裝後端應用，並部署至 GCP Cloud Run，提升系統可擴展性與可用性，使狗狗情緒辨識服務可 24 小時穩定運行。",
+                ],
+            ),
+        ],
+        education=Education(
+            school="國立東華大學",
+            department="經濟學系",
+            period="2016 - 2020",
+        ),
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
