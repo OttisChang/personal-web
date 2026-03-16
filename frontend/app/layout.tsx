@@ -3,8 +3,8 @@ import "./globals.css";
 import ThemeToggle from "./components/ThemeToggle";
 
 export const metadata: Metadata = {
-  title: "個人網站 | AI 前端工程師",
-  description: "AI 產品前端開發工程師的個人介紹網站",
+  title: "張家瑋 Ottis Chang | AI 工程師",
+  description: "張家瑋 Ottis Chang - AI 工程師的個人介紹網站",
 };
 
 export default function RootLayout({

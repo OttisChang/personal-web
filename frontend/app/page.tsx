@@ -129,7 +129,7 @@ export default function Home() {
 
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-              AI 前端開發工程師
+              張家瑋 Ottis Chang
             </span>
           </h1>
 
