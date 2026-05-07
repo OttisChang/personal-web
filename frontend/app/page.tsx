@@ -121,7 +121,7 @@ export default function Home() {
           {/* Avatar */}
           <div className="w-20 h-20 rounded-full mb-6 shadow-lg shadow-indigo-500/30 ring-4 ring-indigo-500/20 overflow-hidden">
             <img
-              src="/張家瑋_照片.jpg"
+              src="/profile.jpg"
               alt="張家瑋"
               className="w-full h-full object-cover"
             />
@@ -254,13 +254,13 @@ export default function Home() {
                 證照編號：WW25TMAZ01099
               </p>
               <a
-                href="/AI班完訓證書..png"
+                href="/certificate.png"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-shadow duration-200 max-w-sm"
               >
                 <img
-                  src="/AI班完訓證書..png"
+                  src="/certificate.png"
                   alt="AI 智慧應用開發實戰養成班完訓證書"
                   className="w-full h-auto object-cover"
                 />
