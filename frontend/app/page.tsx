@@ -29,7 +29,7 @@ const TECH_TAGS = [
   "React", "Next.js", "TypeScript", "Tailwind CSS", "Shadcn UI",
   "Flask", "YOLO", "Deep Learning",
   "Git", "Github",
-  "LLM API", "RAG", "AI Agent", "Flowise",
+  "LLM API", "RAG", "AI Agent", "Flowise", "n8n",
 ];
 
 function Tag({ label }: { label: string }) {
@@ -67,12 +67,14 @@ export default function Home() {
           intro: "您好，我目前任職於金融業，擔任 AI 產品前端開發工程師。",
           experiences: [
             {
-              period: "2025年5月 - 現在",
+              period: "2025年5月 - 現在・1 年",
               company: "凱基金控",
               title: "AI 開發工程師",
               items: [
-                "使用 React、Next.js、TypeScript、Tailwind CSS 與 Shadcn UI 開發公司內部 AI 平台，與設計師跨部門協作，客製化元件、畫面，從 0 到 1 建構整體前端架構。",
-                "透過 Azure DevOps 協助自動化部署流程，持續釋出新版本。",
+                "使用 React、Next.js、TypeScript、Tailwind CSS 與 Shadcn UI 開發公司內部 AI 平台，與設計師跨部門協作並客製化元件，從 0 到 1 建構整體前端架構，並成功推動專案通過 POC 與 UAT 驗證。",
+                "跨足後端開發，獨立串接 Google Gemini API，實作多模態（Multimodal）圖片辨識與自動摘要功能，成功完成 POC 概念驗證並獲技術主管認可，為內部系統擴展 AI 應用場景。",
+                "熟悉 Azure DevOps 自動化部署流程，透過配置環境變數與 Pipeline 維護，加速產品功能的持續迭代與版本交付。",
+                "獨立修復專案所有前端 Veracode 弱點並通過 SonarQube Quality Gate 驗證。透過重構邏輯與強化過濾機制，確保平台符合高標準之資安合規與程式碼品質要求。",
               ],
             },
             {
