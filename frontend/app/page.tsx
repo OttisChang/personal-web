@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSidebar } from "./contexts/SidebarContext";
 
 interface Experience {
   period: string;
@@ -50,6 +51,7 @@ function TimelineDot() {
 }
 
 export default function Home() {
+  const { collapsed } = useSidebar();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -114,7 +116,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-100 via-indigo-50 to-gray-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-950 px-6 py-24">
+      <section className={`relative overflow-hidden bg-gradient-to-br from-slate-100 via-indigo-50 to-gray-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-950 ${collapsed ? 'px-6 py-24' : 'px-4 sm:px-6 py-14 sm:py-20'}`}>
         {/* decorative glow */}
         <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-indigo-400/20 dark:bg-indigo-600/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-72 h-72 rounded-full bg-purple-400/20 dark:bg-purple-600/10 blur-3xl pointer-events-none" />
@@ -129,13 +131,13 @@ export default function Home() {
             />
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+          <h1 className={`font-bold tracking-tight mb-4 ${collapsed ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl md:text-5xl'}`}>
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
               張家瑋 Ottis Chang
             </span>
           </h1>
 
-          <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl">
+          <p className={`text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl ${collapsed ? 'text-lg' : 'text-base sm:text-lg'}`}>
             {loading ? (
               <span className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-5 w-80 block" />
             ) : (
@@ -152,10 +154,10 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="max-w-3xl mx-auto px-6 py-16 space-y-16">
+      <div className={`max-w-3xl mx-auto py-16 space-y-16 ${collapsed ? 'px-6' : 'px-4 sm:px-6'}`}>
         {/* Experience Section */}
         <section>
-          <h2 className="text-2xl font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white">
+          <h2 className={`font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white ${collapsed ? 'text-2xl' : 'text-xl sm:text-2xl'}`}>
             <span className="w-8 h-1 rounded-full bg-indigo-500 inline-block" />
             工作經歷
           </h2>
@@ -203,7 +205,7 @@ export default function Home() {
 
         {/* Education Section */}
         <section>
-          <h2 className="text-2xl font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white">
+          <h2 className={`font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white ${collapsed ? 'text-2xl' : 'text-xl sm:text-2xl'}`}>
             <span className="w-8 h-1 rounded-full bg-purple-500 inline-block" />
             學歷
           </h2>
@@ -235,7 +237,7 @@ export default function Home() {
 
         {/* Certification Section */}
         <section>
-          <h2 className="text-2xl font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white">
+          <h2 className={`font-bold mb-10 flex items-center gap-3 text-gray-900 dark:text-white ${collapsed ? 'text-2xl' : 'text-xl sm:text-2xl'}`}>
             <span className="w-8 h-1 rounded-full bg-indigo-500 inline-block" />
             資格認證
           </h2>

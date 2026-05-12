@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import ThemeToggle from "./components/ThemeToggle";
+import Sidebar from "./components/Sidebar";
+import { SidebarProvider } from "./contexts/SidebarContext";
 
 export const metadata: Metadata = {
   title: "張家瑋 Ottis Chang | AI 工程師",
@@ -25,7 +27,14 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased" suppressHydrationWarning>
         <ThemeToggle />
-        {children}
+        <SidebarProvider>
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">
+              {children}
+            </main>
+          </div>
+        </SidebarProvider>
       </body>
     </html>
   );
