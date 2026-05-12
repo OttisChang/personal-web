@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useSidebar } from "./contexts/SidebarContext";
 
 interface Experience {
@@ -124,10 +125,13 @@ export default function Home() {
         <div className="relative max-w-3xl mx-auto">
           {/* Avatar */}
           <div className="w-20 h-20 rounded-full mb-6 shadow-lg shadow-indigo-500/30 ring-4 ring-indigo-500/20 overflow-hidden">
-            <img
-              src="/profile.jpg"
+            <Image
+              src="/ottis-profile.jpg"
               alt="張家瑋"
+              width={80}
+              height={80}
               className="w-full h-full object-cover"
+              priority
             />
           </div>
 
