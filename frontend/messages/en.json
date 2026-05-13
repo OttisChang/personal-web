@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "title": "Ottis Chang | AI Engineer",
+    "description": "Ottis Chang - AI Engineer's personal website"
+  },
+  "nav": {
+    "profile": "About",
+    "mentalHealth": "Taiwan Mental Health Resources"
+  },
+  "sidebar": {
+    "author": "Ottis Chang",
+    "expand": "Expand menu",
+    "collapse": "Collapse menu",
+    "footer": "© 2025 Ottis Chang"
+  },
+  "themeToggle": {
+    "toDark": "Switch to dark mode",
+    "toLight": "Switch to light mode"
+  },
+  "home": {
+    "experience": "Work Experience",
+    "education": "Education",
+    "certification": "Certifications",
+    "certIssuedDate": "Issued Feb 2025 · Permanent",
+    "certTitle": "AI Application Development Intensive Bootcamp - 500-Hour Certificate",
+    "certCompany": "Wiedu Corporation",
+    "certNumber": "Certificate No. WW25TMAZ01099",
+    "footer": "© {year} Personal Website. Built with Next.js & FastAPI."
+  },
+  "mentalHealth": {
+    "title": "Taiwan Mental Health Resources",
+    "subtitle": "Search mental health hotlines, organizations, and online resources across Taiwan",
+    "emergency": "If you or someone nearby is in crisis, please call 1925 (iCare) or 1995 (Lifeline) — both are free 24/7 services.",
+    "categoryAll": "All",
+    "categoryHotline": "Hotline",
+    "categoryMedical": "Medical",
+    "showing": "Showing {count} / {total}",
+    "notFound": "No results found for \"{query}\"",
+    "clearSearch": "Clear search",
+    "clearSearchLabel": "Clear search",
+    "website": "Official Website",
+    "searchPlaceholder": "Search by name, phone, category, or keyword…",
+    "searchNote": "Filter in real-time · For reference only, please verify with official sources"
+  }
+}

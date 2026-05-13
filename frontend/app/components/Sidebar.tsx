@@ -1,34 +1,37 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Link } from '../../i18n/navigation';
 import { useSidebar } from '../contexts/SidebarContext';
-
-const NAV_ITEMS = [
-  {
-    label: '個人介紹',
-    href: '/',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-      </svg>
-    ),
-  },
-  {
-    label: '台灣心理資源查詢',
-    href: '/taiwan-mental-health',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-      </svg>
-    ),
-  },
-];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
+  const tNav = useTranslations('nav');
+  const tSidebar = useTranslations('sidebar');
+
+  const NAV_ITEMS = [
+    {
+      label: tNav('profile'),
+      href: '/' as const,
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+      ),
+    },
+    {
+      label: tNav('mentalHealth'),
+      href: '/taiwan-mental-health' as const,
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -52,13 +55,13 @@ export default function Sidebar() {
         >
           {!collapsed && (
             <span className="text-sm font-semibold text-[var(--foreground)] truncate select-none">
-              Ottis Chang
+              {tSidebar('author')}
             </span>
           )}
           <button
             onClick={toggle}
             className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--accent-soft)] transition-colors flex-shrink-0"
-            aria-label={collapsed ? '展開選單' : '收合選單'}
+            aria-label={collapsed ? tSidebar('expand') : tSidebar('collapse')}
           >
             {collapsed ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -77,10 +80,11 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
+            const strippedPathname = pathname.replace(/^\/(zh|en)/, '') || '/';
             const isActive =
               item.href === '/'
-                ? pathname === '/'
-                : pathname.startsWith(item.href);
+                ? strippedPathname === '/'
+                : strippedPathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
@@ -104,7 +108,7 @@ export default function Sidebar() {
         {/* Footer */}
         {!collapsed && (
           <div className="px-4 py-3 border-t border-[var(--border)]">
-            <p className="text-xs text-[var(--muted)]">© 2025 Ottis Chang</p>
+            <p className="text-xs text-[var(--muted)]">{tSidebar('footer')}</p>
           </div>
         )}
       </aside>

@@ -8,7 +8,7 @@ export default function MainContent({ children }: { children: ReactNode }) {
   return (
     <main
       className={`ml-16 h-screen overflow-y-auto transition-opacity duration-300 ${
-        collapsed ? 'opacity-100' : 'opacity-50'
+        collapsed ? 'opacity-100' : 'opacity-50 md:opacity-100'
       }`}
     >
       {children}

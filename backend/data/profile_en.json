@@ -1,0 +1,44 @@
+{
+  "name": "About Me",
+  "intro": "Hi, I'm an AI product frontend engineer working in the financial industry.",
+  "experiences": [
+    {
+      "period": "May 2025 - Present · 1 year",
+      "company": "KGI Financial Holding Co., Ltd.",
+      "title": "AI Development Engineer",
+      "items": [
+        "Built the company's internal AI platform frontend from scratch using React, Next.js, TypeScript, Tailwind CSS, and Shadcn UI; collaborated cross-functionally with designers to successfully drive the project through POC and UAT.",
+        "Spearheaded the integration of Google Gemini API to deliver multimodal image recognition and auto-summarization; successfully completed a POC that received commendation from technical leadership for its innovation.",
+        "Optimized Azure DevOps CI/CD pipelines by managing environment variables and configurations, effectively accelerating continuous feature delivery and improving deployment efficiency.",
+        "Fortified application security by resolving all frontend Veracode vulnerabilities and ensuring SonarQube Quality Gate compliance through logic refactoring and enhanced input filtering."
+      ]
+    },
+    {
+      "period": "Oct 2024 - Feb 2025 · 5 months",
+      "company": "Wiedu Corporation",
+      "title": "AI Developer (Project-based)",
+      "items": [
+        "Model optimization: Enhanced canine emotion recognition accuracy by fine-tuning the YOLO model, optimizing inference performance for real-time demonstration.",
+        "Full-Stack Development: Developed a responsive frontend using vanilla JavaScript (ES6+) and integrated it with a Flask/Python backend via Fetch API.",
+        "Cloud Architecture & Deployment: Implemented end-to-end cloud deployment on GCP, utilizing Cloud Run for containerized backend services (Docker) and Cloud Storage for static frontend hosting."
+      ]
+    },
+    {
+      "period": "Sep 2023 - Oct 2024 · 1 yr 2 mo",
+      "company": "The Eslite Corporation",
+      "title": "Book Inventory Specialist",
+      "items": [
+        "Streamlined inventory management across lifestyle, psychology, religion, and philosophy sections; reduced inventory turnover period for religious titles by 50 days, significantly enhancing capital efficiency.",
+        "Developed data-driven book curation strategies, resulting in a 10% increase in monthly sales for the psychology department.",
+        "Acted as Floor Supervisor, overseeing daily team operations and providing real-time conflict resolution to ensure a seamless customer experience.",
+        "Drove sales for premium merchandise, including Instax cameras and e-readers, consistently exceeding monthly revenue targets.",
+        "Leveraged sales analytics to implement promotional strategies, successfully driving 20 psychology titles to surpass sales targets and fulfilling personal OKRs."
+      ]
+    }
+  ],
+  "education": {
+    "school": "National Dong Hwa University",
+    "department": "Department of Economics",
+    "period": "2016 - 2020"
+  }
+}

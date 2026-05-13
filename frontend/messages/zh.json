@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "title": "張家瑋 Ottis Chang | AI 工程師",
+    "description": "張家瑋 Ottis Chang - AI 工程師的個人介紹網站"
+  },
+  "nav": {
+    "profile": "個人介紹",
+    "mentalHealth": "台灣心理資源查詢"
+  },
+  "sidebar": {
+    "author": "Ottis Chang",
+    "expand": "展開選單",
+    "collapse": "收合選單",
+    "footer": "© 2025 Ottis Chang"
+  },
+  "themeToggle": {
+    "toDark": "切換為深色模式",
+    "toLight": "切換為淺色模式"
+  },
+  "home": {
+    "experience": "工作經歷",
+    "education": "學歷",
+    "certification": "資格認證",
+    "certIssuedDate": "發照日期 2025年2月・永久有效",
+    "certTitle": "AI 智慧應用開發實戰養成班－500 小時完訓證書",
+    "certCompany": "緯育股份有限公司",
+    "certNumber": "證照編號：WW25TMAZ01099",
+    "footer": "© {year} Personal Website. Built with Next.js & FastAPI."
+  },
+  "mentalHealth": {
+    "title": "台灣心理資源查詢",
+    "subtitle": "即時搜尋全台心理健康相關熱線、機構與線上資源",
+    "emergency": "若您或身旁的人正處於危機狀態，請立即撥打 1925（安心專線） 或 1995（生命線），均為 24 小時免費服務。",
+    "categoryAll": "全部",
+    "categoryHotline": "諮詢熱線",
+    "categoryMedical": "醫療資源",
+    "showing": "顯示 {count} / {total} 筆",
+    "notFound": "找不到符合「{query}」的資源",
+    "clearSearch": "清除搜尋",
+    "clearSearchLabel": "清除搜尋",
+    "website": "官方網站",
+    "searchPlaceholder": "搜尋資源名稱、電話、類別或關鍵字…",
+    "searchNote": "輸入關鍵字即時篩選 · 資料僅供參考，請以各機構官方公告為準"
+  }
+}

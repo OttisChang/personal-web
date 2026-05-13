@@ -1,24 +1,9 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import "./globals.css";
-import ThemeToggle from "./components/ThemeToggle";
-import Sidebar from "./components/Sidebar";
-import MainContent from "./components/MainContent";
-import { SidebarProvider } from "./contexts/SidebarContext";
+import type { ReactNode } from 'react';
+import './globals.css';
 
-export const metadata: Metadata = {
-  title: "張家瑋 Ottis Chang | AI 工程師",
-  description: "張家瑋 Ottis Chang - AI 工程師的個人介紹網站",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="zh-TW" suppressHydrationWarning>
-      {/* 防閃爍腳本：在頁面渲染前就套用正確的 dark class */}
+    <html suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -26,14 +11,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased" suppressHydrationWarning>
-        <ThemeToggle />
-        <SidebarProvider>
-          <div className="h-screen overflow-hidden">
-            <Sidebar />
-            <MainContent>{children}</MainContent>
-          </div>
-        </SidebarProvider>
+      <body
+        className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased"
+        suppressHydrationWarning
+      >
+        {children}
       </body>
     </html>
   );
