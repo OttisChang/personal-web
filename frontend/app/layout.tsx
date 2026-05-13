@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import ThemeToggle from "./components/ThemeToggle";
 import Sidebar from "./components/Sidebar";
+import MainContent from "./components/MainContent";
 import { SidebarProvider } from "./contexts/SidebarContext";
 
 export const metadata: Metadata = {
@@ -28,11 +29,9 @@ export default function RootLayout({
       <body className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased" suppressHydrationWarning>
         <ThemeToggle />
         <SidebarProvider>
-          <div className="flex h-screen overflow-hidden">
+          <div className="h-screen overflow-hidden">
             <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              {children}
-            </main>
+            <MainContent>{children}</MainContent>
           </div>
         </SidebarProvider>
       </body>
