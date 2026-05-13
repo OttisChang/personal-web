@@ -1,0 +1,57 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/*
+
+variables:
+  acrName: 'acrjpeottisweb01'
+  acrLoginServer: 'acrjpeottisweb01.azurecr.io'
+  imageRepository: 'ottis-web-backend'
+  containerAppName: 'aca-jpe-ottis-web-backend'
+  resourceGroup: 'rg-ottis-web-01'
+  tag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build & Push Docker Image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: Docker@2
+      displayName: Build and push image to ACR
+      inputs:
+        command: buildAndPush
+        containerRegistry: 'ottis-web-acr-service-connection'
+        repository: $(imageRepository)
+        dockerfile: 'backend/Dockerfile'
+        context: 'backend'
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy to Azure Container Apps
+  dependsOn: Build
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: AzureCLI@2
+      displayName: Deploy to Container Apps
+      inputs:
+        azureSubscription: 'ottis-web-arm-service-connection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az containerapp update \
+            --name $(containerAppName) \
+            --resource-group $(resourceGroup) \
+            --image $(acrLoginServer)/$(imageRepository):$(tag)
