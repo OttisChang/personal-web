@@ -35,23 +35,14 @@ stages:
           $(tag)
           latest
 
-- stage: Deploy
-  displayName: Deploy to Azure Container Apps
-  dependsOn: Build
-  jobs:
-  - job: Deploy
-    displayName: Deploy
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-    - task: AzureCLI@2
-      displayName: Deploy to Container Apps
+    - bash: |
+        echo "IMAGE_TAG=$(tag)" > $(Build.ArtifactStagingDirectory)/image-info.env
+        echo "IMAGE_NAME=$(acrLoginServer)/$(imageRepository):$(tag)" >> $(Build.ArtifactStagingDirectory)/image-info.env
+        cat $(Build.ArtifactStagingDirectory)/image-info.env
+      displayName: Export image info for Release Pipeline
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish image info artifact
       inputs:
-        azureSubscription: 'ottis-web-arm-service-connection'
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
-          az containerapp update \
-            --name $(containerAppName) \
-            --resource-group $(resourceGroup) \
-            --image $(acrLoginServer)/$(imageRepository):$(tag)
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/image-info.env'
+        artifactName: imageInfo
