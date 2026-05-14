@@ -52,6 +52,11 @@ def read_root():
     return {"message": "Personal Website API is running"}
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.get("/api/profile", response_model=Profile)
 def get_profile(lang: str = Query(default="zh", pattern="^(zh|en)$")):
     return load_profile(lang)
