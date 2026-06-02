@@ -292,13 +292,13 @@ export default function Home() {
                   {t('certNumber')}
                 </p>
                 <a
-                  href="/certificate.png"
+                  href="/ottis-tibame.png"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-shadow duration-200 max-w-sm"
                 >
                   <img
-                    src="/certificate.png"
+                    src="/ottis-tibame.png"
                     alt={t('certTitle')}
                     className="w-full h-auto object-cover"
                   />
