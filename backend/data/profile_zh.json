@@ -41,5 +41,14 @@
     "school": "國立東華大學",
     "department": "經濟學系",
     "period": "2016 - 2020"
-  }
+  },
+  "skills": [
+    "Python", "MySQL", "Tableau", "Power BI",
+    "GCP", "Azure", "Github Actions",
+    "HTML", "CSS", "JavaScript",
+    "React", "Next.js", "TypeScript", "Tailwind CSS", "Shadcn UI",
+    "Flask", "YOLO", "Deep Learning",
+    "Git", "Github",
+    "LLM API", "RAG", "AI Agent", "Flowise", "n8n"
+  ]
 }

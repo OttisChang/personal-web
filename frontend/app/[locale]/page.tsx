@@ -23,17 +23,9 @@ interface Profile {
   intro: string;
   experiences: Experience[];
   education: Education;
+  skills: string[];
 }
 
-const TECH_TAGS = [
-  "Python", "MySQL", "Tableau", "Power BI",
-  "GCP", "Azure", "Github Actions",
-  "HTML", "CSS", "JavaScript",
-  "React", "Next.js", "TypeScript", "Tailwind CSS", "Shadcn UI",
-  "Flask", "YOLO", "Deep Learning",
-  "Git", "Github",
-  "LLM API", "RAG", "AI Agent", "Flowise", "n8n",
-];
 
 function useFadeIn(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -101,6 +93,7 @@ export default function Home() {
   useEffect(() => {
     setLoading(true);
     setError(false);
+    // if (true) return; 
     fetch(`/api/profile?lang=${locale}`)
       .then((res) => res.json())
       .then((data) => {
@@ -116,7 +109,7 @@ export default function Home() {
   if (error) {
     return (
       <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <p className="text-[var(--muted)] text-sm">無法載入資料，請確認後端服務是否正常運行。</p>
+        <p className="text-[var(--muted)] text-sm">無法載入資料，請檢查網路連線。</p>
       </main>
     );
   }
@@ -159,7 +152,10 @@ export default function Home() {
             style={{ transitionDelay: "300ms" }}
           >
             {loading ? (
-              <span className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-5 w-80 block" />
+              <span className="space-y-2 block">
+                <span className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded h-5 w-56 sm:w-[31rem] block" />
+                <span className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded h-5 w-64 sm:w-20 block" />
+              </span>
             ) : (
               profile?.intro
             )}
@@ -170,9 +166,37 @@ export default function Home() {
             className={`mt-8 flex flex-wrap gap-2 transition-all duration-700 ${mounted ? "opacity-100" : "opacity-0"}`}
             style={{ transitionDelay: "450ms" }}
           >
-            {TECH_TAGS.map((tag, i) => (
-              <Tag key={tag} label={tag} delay={500 + i * 30} mounted={mounted} />
-            ))}
+            {loading ? (
+              <>
+                {/* 手機板：flex-wrap 對應實際 tag 寬度 */}
+                <div className="flex flex-wrap gap-2 sm:hidden">
+                  {[
+                    'w-14','w-14','w-16',
+                    'w-16','w-12','w-14',
+                    'w-16','w-14','w-12','w-14',
+                  ].map((w, i) => (
+                    <div key={i} className={`animate-pulse bg-gray-200 dark:bg-gray-800 rounded-full h-6 ${w}`} />
+                  ))}
+                </div>
+                {/* 電腦板：固定兩行 */}
+                <div className="hidden sm:flex sm:flex-col gap-2 w-full">
+                  <div className="flex gap-2">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={`r1-${i}`} className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-full h-6 w-16" />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={`r2-${i}`} className="animate-pulse bg-gray-200 dark:bg-gray-800 rounded-full h-6 w-16" />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              (profile?.skills ?? []).map((tag: string, i: number) => (
+                <Tag key={tag} label={tag} delay={500 + i * 30} mounted={mounted} />
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -188,12 +212,21 @@ export default function Home() {
           </FadeIn>
 
           {loading ? (
-            <div className="space-y-6">
+            <div className="space-y-10">
               {[1, 2].map((i) => (
-                <div key={i} className="animate-pulse space-y-3">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-40" />
-                  <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-64" />
-                  <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-full" />
+                <div key={i} className="flex gap-5">
+                  <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-700 shrink-0 mt-1" />
+                  <div className="animate-pulse space-y-3 flex-1">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-40" />
+                    <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-56" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-28" />
+                    <div className="space-y-2 pt-1">
+                      <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-full" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-5/6" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-full" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-4/6" />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -240,9 +273,13 @@ export default function Home() {
           </FadeIn>
 
           {loading ? (
-            <div className="animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-32" />
-              <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-56" />
+            <div className="flex gap-5">
+              <div className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-700 shrink-0 mt-1" />
+              <div className="animate-pulse space-y-3 flex-1">
+                <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-20" />
+                <div className="h-6 bg-gray-200 dark:bg-gray-800 rounded w-52" />
+                <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-36" />
+              </div>
             </div>
           ) : (
             <FadeIn delay={100}>

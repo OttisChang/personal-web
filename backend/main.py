@@ -40,6 +40,7 @@ class Profile(BaseModel):
     intro: str
     experiences: List[Experience]
     education: Education
+    skills: List[str]
 
 
 def load_profile(lang: str) -> Profile:
