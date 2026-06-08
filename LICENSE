@@ -1,0 +1,25 @@
+Copyright (c) 2026 Ottis Chang
+
+All rights reserved.
+
+The source code, design, architecture, and content of this repository are provided strictly for viewing and reference purposes only, primarily to demonstrate technical capabilities.
+
+You are NOT permitted to:
+1. Copy, clone, or fork this repository to use as a template for your own personal or commercial projects.
+2. Modify, distribute, reproduce, or publish any part of this code, design, or content without explicit prior written permission from the author.
+3. Use the source code or UI/UX design for any commercial or non-commercial use cases.
+
+This is a personal portfolio and resume project. Please respect the original author's copyright and effort. If you are inspired by the technical implementation (such as i18n or dark mode), you are encouraged to build your own application from scratch.
+
+---
+
+版權所有 (c) 2026 Ottis Chang。保留所有權利。
+
+本專案之原始碼、設計排版、系統架構與圖文內容，公開僅供技術展示、面試交流與學習觀摩之用。
+
+未經原作者明確之書面授權，您「不得」進行以下行為：
+1. 複製、Clone 或 Fork 本專案作為您個人網站、履歷或任何商業專案的模板。
+2. 修改、散佈、重製或發布本專案的任何程式碼、設計或內容。
+3. 將本專案之原始碼或使用者介面設計用於任何商業或非商業用途。
+
+本專案為開發者個人專屬之數位履歷。請尊重原創心血與版權。若您對本專案的技術實作（如多國語系或深淺色切換）感興趣，歡迎閱讀原始碼作為學習參考，但請務必自行從頭建構屬於您自己的應用程式。
