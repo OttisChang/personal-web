@@ -5,7 +5,8 @@
   },
   "nav": {
     "profile": "About",
-    "mentalHealth": "Taiwan Mental Health Resources"
+    "mentalHealth": "Taiwan Mental Health Resources",
+    "webSearch": "AI Web Search"
   },
   "sidebar": {
     "author": "Ottis Chang",
@@ -26,6 +27,20 @@
     "certCompany": "Wiedu Corporation",
     "certNumber": "Certificate No. WW25TMAZ01099",
     "footer": "© {year} Personal Website. Built with React, Next.js & FastAPI."
+  },
+  "webSearch": {
+    "title": "AI Web Search",
+    "subtitle": "Powered by Groq with Function Calling and real-time web search",
+    "placeholder": "Ask anything — AI will search the web and answer…",
+    "searchBtn": "Search",
+    "hint": "Powered by Groq",
+    "aiAnswer": "AI Answer",
+    "sources": "Sources",
+    "emptyState": "Ask a question and AI will search the latest information for you",
+    "errorGeneric": "An error occurred. Please try again.",
+    "stepSearch": "Searching the web",
+    "stepAnalyze": "Analyzing results",
+    "stepGenerate": "Generating answer"
   },
   "mentalHealth": {
     "title": "Taiwan Mental Health Resources",
