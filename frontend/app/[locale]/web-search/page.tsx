@@ -80,17 +80,12 @@ function AnswerBlock({ text }: { text: string }) {
         ul: ({ children }) => (
           <ul className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ul>
         ),
-        li: ({ children, ...props }) => {
-          const isOrdered = (props as { ordered?: boolean }).ordered;
-          return (
-            <li className="flex gap-2.5 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-              <span className={`mt-0.5 shrink-0 font-medium ${isOrdered ? "text-indigo-500" : "text-indigo-400"}`}>
-                {isOrdered ? "" : "▸"}
-              </span>
-              <span>{children}</span>
-            </li>
-          );
-        },
+        li: ({ children }) => (
+          <li className="flex gap-2.5 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+            <span className="mt-0.5 shrink-0 text-indigo-400 font-medium">▸</span>
+            <span>{children}</span>
+          </li>
+        ),
         h1: ({ children }) => (
           <h1 className="text-base font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h1>
         ),
