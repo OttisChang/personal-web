@@ -23,7 +23,7 @@ export default function LanguageSwitcher() {
       disabled={isPending}
       aria-label={locale === 'zh' ? 'Switch to English' : '切換為中文'}
       className="
-        fixed top-4 right-16 z-50
+        fixed top-4 right-[72px] z-50
         w-10 h-10 rounded-full
         flex items-center justify-center
         bg-white/90 dark:bg-gray-800/90

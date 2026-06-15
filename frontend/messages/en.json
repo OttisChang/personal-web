@@ -31,7 +31,7 @@
   "webSearch": {
     "title": "AI Web Search",
     "subtitle": "Powered by Groq with Function Calling and real-time web search",
-    "placeholder": "Ask anything — AI will search the web and answer…",
+    "placeholder": "Ask AI anything",
     "searchBtn": "Search",
     "hint": "Powered by Groq",
     "aiAnswer": "AI Answer",

@@ -25,7 +25,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "切換為淺色模式" : "切換為深色模式"}
       className="
-        fixed top-4 right-4 z-50
+        fixed top-4 right-6 z-50
         w-10 h-10 rounded-full
         flex items-center justify-center
         bg-white/90 dark:bg-gray-800/90

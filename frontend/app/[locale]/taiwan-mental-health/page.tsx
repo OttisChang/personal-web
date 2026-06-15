@@ -282,10 +282,20 @@ export default function TaiwanMentalHealthPage() {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-[var(--foreground)] leading-tight">
-                {t('title')}
+                {locale === 'en' ? (
+                  <>
+                    <span className="block sm:inline">Taiwan Mental</span>
+                    <span className="block sm:inline">Health Resources</span>
+                  </>
+                ) : t('title')}
               </h1>
               <p className="text-xs sm:text-sm text-[var(--muted)] mt-0.5">
-                {t('subtitle')}
+                {locale === 'zh' ? (
+                  <>
+                    <span className="block sm:inline">搜尋心理健康相關熱線、機構</span>
+                    <span className="block sm:inline">與線上資源</span>
+                  </>
+                ) : t('subtitle')}
               </p>
             </div>
           </div>
@@ -370,7 +380,7 @@ export default function TaiwanMentalHealthPage() {
               ref={textareaRef}
               rows={1}
               style={{ minHeight: '56px', maxHeight: '200px', borderRadius: '0.75rem' }}
-              className="relative z-0 w-full bg-transparent text-sm text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none resize-none pt-4 pl-4 pr-12 pb-4 overflow-y-auto border-none scrollbar-thin"
+              className="relative z-0 w-full bg-transparent text-sm text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none resize-none py-2 pl-4 pr-12 overflow-y-auto border-none scrollbar-thin"
               placeholder={t('searchPlaceholder')}
               value={query}
               onChange={handleQueryChange}

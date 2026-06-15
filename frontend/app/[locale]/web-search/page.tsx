@@ -7,7 +7,6 @@ import DOMPurify from "isomorphic-dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// 移除所有 HTML 標籤與屬性，只保留純文字
 function sanitizePlainText(input: string): string {
   return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
 }
@@ -18,9 +17,10 @@ interface SearchSource {
   snippet: string;
 }
 
-interface SearchResult {
-  answer: string;
-  sources: SearchSource[];
+interface ChatMessage {
+  role: "user" | "ai" | "error";
+  content: string;
+  sources?: SearchSource[];
   search_query?: string;
 }
 
@@ -138,7 +138,6 @@ function LoadingCard({ step, t }: { step: number; t: (key: string) => string }) 
 
   return (
     <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
-      {/* Header */}
       <div className="flex items-center gap-2 mb-5">
         <div className="w-5 h-5 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white">
@@ -152,7 +151,6 @@ function LoadingCard({ step, t }: { step: number; t: (key: string) => string }) 
         </svg>
       </div>
 
-      {/* Steps */}
       <div className="space-y-2.5 mb-5">
         {steps.map((s, i) => {
           const done = i < step;
@@ -192,7 +190,6 @@ function LoadingCard({ step, t }: { step: number; t: (key: string) => string }) 
         })}
       </div>
 
-      {/* Skeleton */}
       <div className="space-y-2 animate-pulse">
         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6" />
@@ -210,10 +207,9 @@ export default function WebSearchPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [result, setResult] = useState<SearchResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  // 防重複送出：使用 ref 避免 re-render，finally 區塊無條件解鎖
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -228,20 +224,22 @@ export default function WebSearchPage() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [loading]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    // 防重複送出：入口鎖定
     if (isSubmittingRef.current) return;
 
-    // 先 sanitize → 再驗證 → 最後送 API
     const safeQuery = sanitizePlainText(query.trim());
     if (!safeQuery) return;
 
     isSubmittingRef.current = true;
     setLoading(true);
-    setResult(null);
-    setError(null);
+    setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
+    setQuery("");
 
     try {
       const res = await fetch("/api/web-search", {
@@ -255,54 +253,162 @@ export default function WebSearchPage() {
         throw new Error(data.detail || t("errorGeneric"));
       }
 
-      const data: SearchResult = await res.json();
-      setResult(data);
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          content: data.answer,
+          sources: data.sources,
+          search_query: data.search_query,
+        },
+      ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errorGeneric"));
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "error",
+          content: err instanceof Error ? err.message : t("errorGeneric"),
+        },
+      ]);
     } finally {
-      // 無條件解鎖
       isSubmittingRef.current = false;
       setLoading(false);
     }
   };
 
+  const hasMessages = messages.length > 0;
+  const px = collapsed ? "px-6" : "px-4 sm:px-6";
+
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-      {/* Hero */}
-      <section
-        className={`relative overflow-hidden bg-gradient-to-br from-slate-100 via-indigo-50 to-gray-50 dark:from-gray-900 dark:via-indigo-950 dark:to-gray-950 ${
-          collapsed ? "px-6 py-20" : "px-4 sm:px-6 py-12 sm:py-16"
-        }`}
-      >
-        <div className="absolute -top-32 -left-32 w-80 h-80 rounded-full bg-indigo-400/20 dark:bg-indigo-600/10 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: "6s" }} />
-        <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full bg-purple-400/20 dark:bg-purple-600/10 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: "8s", animationDelay: "2s" }} />
-
-        <div className="relative max-w-2xl mx-auto">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-              {t("title")}
-            </h1>
+    <main className="flex flex-col min-h-screen bg-[var(--background)]">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-10 bg-[var(--card)] border-b border-[var(--border)]">
+        <div className={`max-w-2xl mx-auto flex items-center gap-2.5 py-[18px] ${px}`}>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow shadow-indigo-500/30 flex-shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
           </div>
+          <h1 className="text-lg sm:text-xl font-bold text-[var(--foreground)] leading-tight">
+            {t("title")}
+          </h1>
+        </div>
+      </header>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
-            {t("subtitle")}
-          </p>
+      {/* Messages area */}
+      <div className={`flex-1 max-w-2xl mx-auto w-full py-6 pb-36 space-y-6 ${px}`}>
+        {/* Empty state */}
+        {!hasMessages && !loading && (
+          <div className="flex flex-col items-center justify-center py-24 text-[var(--muted)]">
+            <svg className="w-12 h-12 mb-4 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <p className="text-sm">{t("emptyState")}</p>
+            <p className="text-xs mt-1 opacity-60">{t("hint")}</p>
+          </div>
+        )}
 
+        {/* Chat messages */}
+        {messages.map((msg, idx) => {
+          if (msg.role === "user") {
+            return (
+              <div key={idx} className="flex justify-end">
+                <div
+                  className="max-w-[80%] px-5 py-3 rounded-2xl text-sm leading-relaxed break-words select-text"
+                  style={{
+                    backgroundColor: "rgb(99 102 241 / 0.12)",
+                    color: "inherit",
+                    borderRadius: "16px 16px 4px 16px",
+                  }}
+                >
+                  <span className="text-gray-800 dark:text-gray-100">{msg.content}</span>
+                </div>
+              </div>
+            );
+          }
+
+          if (msg.role === "error") {
+            return (
+              <div key={idx} className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-sm text-red-600 dark:text-red-400">
+                {msg.content}
+              </div>
+            );
+          }
+
+          // AI message
+          return (
+            <div key={idx} className="space-y-4">
+              {/* AI header */}
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
+                {msg.search_query && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-500 dark:text-indigo-400">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    {msg.search_query}
+                  </span>
+                )}
+              </div>
+
+              {/* Answer content */}
+              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
+                <AnswerBlock text={msg.content} />
+              </div>
+
+              {/* Sources */}
+              {msg.sources && msg.sources.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                    </svg>
+                    {t("sources")}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {msg.sources.map((s, i) => (
+                      <SourceCard key={i} source={s} index={i} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Loading state inline in chat */}
+        {loading && <LoadingCard step={loadingStep} t={t} />}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Fixed bottom input bar */}
+      <div className="fixed bottom-0 left-16 right-0 bg-[var(--card)] border-t border-[var(--border)] py-4">
+        <div className={`max-w-2xl mx-auto pl-[2px] pr-4 sm:pr-6`}>
           <form onSubmit={handleSearch} className="relative">
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSearch();
+                }
+              }}
               placeholder={t("placeholder")}
               disabled={loading}
-              className="w-full px-5 py-4 pr-14 rounded-2xl border border-[var(--border)] bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
+              className="w-full pl-6 py-3.5 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
             />
             <button
               type="submit"
@@ -323,77 +429,7 @@ export default function WebSearchPage() {
               )}
             </button>
           </form>
-
-          <p className="mt-3 text-xs text-gray-400 dark:text-gray-600">{t("hint")}</p>
         </div>
-      </section>
-
-      {/* Results */}
-      <div className={`max-w-2xl mx-auto py-10 space-y-8 ${collapsed ? "px-6" : "px-4 sm:px-6"}`}>
-        {/* Loading card with steps */}
-        {loading && <LoadingCard step={loadingStep} t={t} />}
-
-        {/* Error */}
-        {error && (
-          <div className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-sm text-red-600 dark:text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Answer */}
-        {result && (
-          <>
-            <section>
-              <h2 className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mb-4 flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-                </svg>
-                {t("aiAnswer")}
-
-                {/* Tool call badge */}
-                {result.search_query && (
-                  <span className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-500 dark:text-indigo-400 font-normal">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-                    </svg>
-                    {result.search_query}
-                  </span>
-                )}
-              </h2>
-              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
-                <AnswerBlock text={result.answer} />
-              </div>
-            </section>
-
-            {result.sources.length > 0 && (
-              <section>
-                <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-                  </svg>
-                  {t("sources")}
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {result.sources.map((s, i) => (
-                    <SourceCard key={i} source={s} index={i} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-        {/* Empty state */}
-        {!loading && !result && !error && (
-          <div className="text-center py-12 text-gray-400 dark:text-gray-600">
-            <svg className="w-10 h-10 mx-auto mb-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <p className="text-sm">{t("emptyState")}</p>
-          </div>
-        )}
       </div>
     </main>
   );
