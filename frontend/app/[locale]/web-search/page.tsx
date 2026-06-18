@@ -396,7 +396,7 @@ export default function WebSearchPage() {
                   style={{
                     backgroundColor: "rgb(99 102 241 / 0.12)",
                     color: "inherit",
-                    borderRadius: "16px 16px 4px 16px",
+                    borderRadius: "16px 16px 16px 16px",
                   }}
                 >
                   <span className="text-gray-800 dark:text-gray-100">{msg.content}</span>
