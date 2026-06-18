@@ -30,17 +30,18 @@
   },
   "webSearch": {
     "title": "AI 網路搜尋",
-    "subtitle": "由 Groq 驅動，結合 Function Calling 與即時網路搜尋",
+    "subtitle": "由 Gemini 模型驅動，結合 Google Search 與即時網路搜尋",
     "placeholder": "輸入任何問題，AI 會搜尋網路後回答…",
     "searchBtn": "搜尋",
-    "hint": "由 Groq 提供支援",
+    "hint": "由 Gemini 模型回答",
     "aiAnswer": "AI 回答",
     "sources": "參考來源",
     "emptyState": "輸入問題，AI 將搜尋最新資訊並整合回答",
     "errorGeneric": "發生錯誤，請稍後再試。",
-    "stepSearch": "搜尋網路資料",
+    "stepDecide": "AI 決策工具中...",
+    "stepSearch": "工具執行中",
     "stepAnalyze": "分析搜尋結果",
-    "stepGenerate": "生成回答"
+    "stepGenerate": "生成回答中..."
   },
   "mentalHealth": {
     "title": "台灣心理資源查詢",

@@ -22,7 +22,47 @@ interface ChatMessage {
   content: string;
   sources?: SearchSource[];
   search_query?: string;
+  tool_used?: string;
 }
+
+const TOOL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  get_weather: {
+    label: "即時天氣 MCP",
+    color: "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400",
+    icon: (
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    ),
+  },
+  get_weather_forecast: {
+    label: "天氣預報 MCP",
+    color: "bg-sky-50 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400",
+    icon: (
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+      </svg>
+    ),
+  },
+  esun_exchange_rate: {
+    label: "匯率 MCP",
+    color: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400",
+    icon: (
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+      </svg>
+    ),
+  },
+  web_search: {
+    label: "網路搜尋",
+    color: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400",
+    icon: (
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+    ),
+  },
+};
 
 function SourceCard({ source, index }: { source: SearchSource; index: number }) {
   const domain = (() => {
@@ -108,21 +148,26 @@ function AnswerBlock({ text }: { text: string }) {
   );
 }
 
-function LoadingCard({ step, t }: { step: number; t: (key: string) => string }) {
+type CalledTool = { tool: string; label: string };
+
+function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string) => string }) {
+  const toolMeta = calledTool ? TOOL_META[calledTool.tool] : null;
   const steps = [
     {
-      label: t("stepSearch"),
+      label: t("stepDecide"),
       icon: (
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+          <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
         </svg>
       ),
     },
     {
-      label: t("stepAnalyze"),
-      icon: (
+      label: calledTool ? `調用 ${calledTool.label}` : t("stepSearch"),
+      icon: toolMeta ? (
+        <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
+      ) : (
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
         </svg>
       ),
     },
@@ -207,6 +252,7 @@ export default function WebSearchPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [calledTool, setCalledTool] = useState<CalledTool | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -216,13 +262,6 @@ export default function WebSearchPage() {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!loading) return;
-    setLoadingStep(0);
-    const t1 = setTimeout(() => setLoadingStep(1), 1800);
-    const t2 = setTimeout(() => setLoadingStep(2), 3800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [loading]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -238,6 +277,8 @@ export default function WebSearchPage() {
 
     isSubmittingRef.current = true;
     setLoading(true);
+    setLoadingStep(0);
+    setCalledTool(null);
     setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
     setQuery("");
 
@@ -248,21 +289,57 @@ export default function WebSearchPage() {
         body: JSON.stringify({ query: safeQuery }),
       });
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || t("errorGeneric"));
       }
 
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content: data.answer,
-          sources: data.sources,
-          search_query: data.search_query,
-        },
-      ]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (!payload) continue;
+          let event: Record<string, unknown>;
+          try {
+            event = JSON.parse(payload);
+          } catch {
+            continue;
+          }
+
+          if (event.type === "routing") {
+            setLoadingStep(0);
+          } else if (event.type === "tool_selected") {
+            setCalledTool({ tool: event.tool as string, label: event.label as string });
+            setLoadingStep(1);
+          } else if (event.type === "executing") {
+            setLoadingStep(2);
+          } else if (event.type === "done") {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "ai",
+                content: event.answer as string,
+                sources: event.sources as SearchSource[],
+                search_query: event.search_query as string,
+                tool_used: event.tool_used as string,
+              },
+            ]);
+            break outer;
+          } else if (event.type === "error") {
+            throw new Error(event.message as string);
+          }
+        }
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -274,6 +351,7 @@ export default function WebSearchPage() {
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
+      setCalledTool(null);
     }
   };
 
@@ -342,18 +420,25 @@ export default function WebSearchPage() {
           return (
             <div key={idx} className="space-y-4">
               {/* AI header */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
                   </svg>
                 </div>
                 <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
-                {msg.search_query && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-500 dark:text-indigo-400">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-                    </svg>
+
+                {/* Tool used badge */}
+                {msg.tool_used && TOOL_META[msg.tool_used] && (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${TOOL_META[msg.tool_used].color}`}>
+                    {TOOL_META[msg.tool_used].icon}
+                    {TOOL_META[msg.tool_used].label}
+                  </span>
+                )}
+
+                {/* Search query badge (web_search only) */}
+                {msg.tool_used === "web_search" && msg.search_query && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                     {msg.search_query}
                   </span>
                 )}
@@ -386,7 +471,7 @@ export default function WebSearchPage() {
         })}
 
         {/* Loading state inline in chat */}
-        {loading && <LoadingCard step={loadingStep} t={t} />}
+        {loading && <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />}
 
         <div ref={messagesEndRef} />
       </div>
