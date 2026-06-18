@@ -29,12 +29,12 @@
     "footer": "© {year} Personal Website. Built with React, Next.js & FastAPI."
   },
   "webSearch": {
-    "title": "AI Web Search",
+    "title": "Ottis AI Web Search",
     "subtitle": "Powered by Gemini with built-in Google Search",
     "placeholder": "Ask AI anything",
     "searchBtn": "Search",
-    "hint": "Answered by Gemini",
-    "aiAnswer": "AI Answer",
+    "hint": "Powered by llama-3.3-70b",
+    "aiAnswer": "Ottis AI",
     "sources": "Sources",
     "emptyState": "Ask a question and AI will search the latest information for you",
     "errorGeneric": "An error occurred. Please try again.",

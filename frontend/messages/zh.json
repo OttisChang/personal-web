@@ -29,12 +29,12 @@
     "footer": "© {year} Personal Website. Built with React, Next.js & FastAPI."
   },
   "webSearch": {
-    "title": "AI 網路搜尋",
+    "title": "Ottis AI 網路搜尋",
     "subtitle": "由 Gemini 模型驅動，結合 Google Search 與即時網路搜尋",
-    "placeholder": "輸入任何問題，AI 會搜尋網路後回答…",
+    "placeholder": "請輸入問題，可詢問天氣或即期匯率等最新資訊",
     "searchBtn": "搜尋",
-    "hint": "由 Gemini 模型回答",
-    "aiAnswer": "AI 回答",
+    "hint": "由 llama-3.3-70b 模型回答",
+    "aiAnswer": "Ottis AI",
     "sources": "參考來源",
     "emptyState": "輸入問題，AI 將搜尋最新資訊並整合回答",
     "errorGeneric": "發生錯誤，請稍後再試。",

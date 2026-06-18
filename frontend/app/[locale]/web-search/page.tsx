@@ -6,6 +6,7 @@ import { useSidebar } from "../../contexts/SidebarContext";
 import DOMPurify from "isomorphic-dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { BotMessageSquare } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
   return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
@@ -184,11 +185,7 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   return (
     <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
       <div className="flex items-center gap-2 mb-5">
-        <div className="w-5 h-5 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-          </svg>
-        </div>
+        <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
         <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
         <svg className="ml-auto animate-spin w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -421,11 +418,7 @@ export default function WebSearchPage() {
             <div key={idx} className="space-y-4">
               {/* AI header */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
-                  </svg>
-                </div>
+                <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                 <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
 
                 {/* Tool used badge */}
