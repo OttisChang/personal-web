@@ -1,5 +1,10 @@
 import { redirect } from '@/i18n/navigation';
 
-export default function WebSearchRedirect() {
-  redirect('/');
+export default async function WebSearchRedirect({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  redirect({ href: '/', locale });
 }
