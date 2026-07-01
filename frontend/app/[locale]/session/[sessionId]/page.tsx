@@ -1,32 +1,36 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { useSession, signIn } from "next-auth/react";
-import { useParams } from "next/navigation";
-import { useSidebar } from "../contexts/SidebarContext";
+import { useSidebar } from "../../../contexts/SidebarContext";
 import DOMPurify from "isomorphic-dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BotMessageSquare, Search } from "lucide-react";
+import { BotMessageSquare } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
   return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
 }
 
-interface SearchSource {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface Source {
   title: string;
   url: string;
   snippet: string;
 }
 
-interface ChatMessage {
-  role: "user" | "ai" | "error";
+interface DisplayMessage {
+  role: "user" | "assistant" | "error";
   content: string;
-  sources?: SearchSource[];
-  search_query?: string;
   tool_used?: string;
+  search_query?: string;
+  sources?: Source[];
 }
+
+// ── Tool metadata ─────────────────────────────────────────────────────────────
 
 const TOOL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   get_weather: {
@@ -67,15 +71,13 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
   },
 };
 
-function SourceCard({ source, index }: { source: SearchSource; index: number }) {
-  const domain = (() => {
-    try {
-      return new URL(source.url).hostname.replace("www.", "");
-    } catch {
-      return source.url;
-    }
-  })();
+// ── Sub-components ────────────────────────────────────────────────────────────
 
+function SourceCard({ source, index }: { source: Source; index: number }) {
+  const domain = (() => {
+    try { return new URL(source.url).hostname.replace("www.", ""); }
+    catch { return source.url; }
+  })();
   return (
     <a
       href={source.url}
@@ -106,43 +108,21 @@ function AnswerBlock({ text }: { text: string }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        p: ({ children }) => (
-          <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 last:mb-0">
-            {children}
-          </p>
-        ),
-        strong: ({ children }) => (
-          <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>
-        ),
-        em: ({ children }) => (
-          <em className="italic text-gray-600 dark:text-gray-400">{children}</em>
-        ),
-        ol: ({ children }) => (
-          <ol className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ol>
-        ),
-        ul: ({ children }) => (
-          <ul className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ul>
-        ),
+        p: ({ children }) => <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 last:mb-0">{children}</p>,
+        strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+        em: ({ children }) => <em className="italic text-gray-600 dark:text-gray-400">{children}</em>,
+        ol: ({ children }) => <ol className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ol>,
+        ul: ({ children }) => <ul className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ul>,
         li: ({ children }) => (
           <li className="flex gap-2.5 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
             <span className="mt-0.5 shrink-0 text-indigo-400 font-medium">▸</span>
             <span>{children}</span>
           </li>
         ),
-        h1: ({ children }) => (
-          <h1 className="text-base font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5 mt-3 first:mt-0">{children}</h3>
-        ),
-        code: ({ children }) => (
-          <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-indigo-600 dark:text-indigo-400">
-            {children}
-          </code>
-        ),
+        h1: ({ children }) => <h1 className="text-base font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5 mt-3 first:mt-0">{children}</h3>,
+        code: ({ children }) => <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-indigo-600 dark:text-indigo-400">{children}</code>,
         hr: () => <hr className="border-gray-200 dark:border-gray-700 my-3" />,
       }}
     >
@@ -158,29 +138,17 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   const steps = [
     {
       label: t("stepDecide"),
-      icon: (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-        </svg>
-      ),
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>,
     },
     {
       label: calledTool ? `調用 ${calledTool.label}` : t("stepSearch"),
-      icon: toolMeta ? (
-        <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
-      ) : (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-        </svg>
-      ),
+      icon: toolMeta
+        ? <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
+        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
     },
     {
       label: t("stepGenerate"),
-      icon: (
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-        </svg>
-      ),
+      icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
     },
   ];
 
@@ -194,33 +162,19 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
         </svg>
       </div>
-
       <div className="space-y-2.5 mb-5">
         {steps.map((s, i) => {
           const done = i < step;
           const active = i === step;
           return (
-            <div
-              key={i}
-              className={`flex items-center gap-3 transition-all duration-300 ${done || active ? "opacity-100" : "opacity-25"}`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${
-                  done
-                    ? "bg-green-500 text-white"
-                    : active
-                    ? "bg-indigo-500 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-400"
-                }`}
-              >
+            <div key={i} className={`flex items-center gap-3 transition-all duration-300 ${done || active ? "opacity-100" : "opacity-25"}`}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${done ? "bg-green-500 text-white" : active ? "bg-indigo-500 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-400"}`}>
                 {done ? (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 ) : active ? (
                   <svg className="animate-spin w-2.5 h-2.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                   </svg>
                 ) : (
                   <span className="text-gray-400">{s.icon}</span>
@@ -233,7 +187,6 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
           );
         })}
       </div>
-
       <div className="space-y-2 animate-pulse">
         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
         <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6" />
@@ -245,81 +198,78 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   );
 }
 
-function LoginGate() {
-  const [signingIn, setSigningIn] = useState(false);
-  return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-4">
-      <div className="w-full max-w-sm text-center space-y-6">
-        {/* Icon */}
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-        </div>
+// ── Main page ─────────────────────────────────────────────────────────────────
 
-        {/* Title */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Ottis AI 搜尋</h1>
-          <p className="text-sm text-[var(--muted)] leading-relaxed">
-            登入後即可使用 AI 網路搜尋、天氣查詢與即時匯率等功能
-          </p>
-        </div>
-
-        {/* Google sign-in button */}
-        <button
-          onClick={() => { setSigningIn(true); signIn("google"); }}
-          disabled={signingIn}
-          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-[var(--foreground)] transition-colors shadow-sm disabled:opacity-60"
-        >
-          {signingIn ? (
-            <svg className="animate-spin w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
-          <span>{signingIn ? "登入中..." : "使用 Google 登入"}</span>
-        </button>
-      </div>
-    </main>
-  );
-}
-
-export default function Home() {
+export default function SessionPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const { collapsed } = useSidebar();
   const t = useTranslations("webSearch");
-  const { data: session, status } = useSession();
-  const params = useParams();
-  const locale = params.locale as string;
+
+  const sessionId = params.sessionId as string;
+
+  // ── Page load state
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [sessionTitle, setSessionTitle] = useState("");
+
+  // ── Conversation state
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [calledTool, setCalledTool] = useState<CalledTool | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isSubmittingRef = useRef<boolean>(false);
+  const isSubmittingRef = useRef(false);
   const plansRef = useRef<{ sort: number; plan: string }[]>([]);
 
+  // ── Load session history
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (status === "loading") return;
+    if (status === "unauthenticated") { router.replace("/"); return; }
 
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`);
+        if (res.status === 404) { setPageError("找不到此對話紀錄"); return; }
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setSessionTitle(data.title);
+        setMessages(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (data.messages as any[]).map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            tool_used: m.tool_used,
+            search_query: m.search_query,
+            sources: m.sources ?? [],
+          }))
+        );
+      } catch {
+        setPageError("載入對話紀錄失敗，請稍後再試");
+      } finally {
+        setPageLoading(false);
+      }
+    };
+    load();
+  }, [sessionId, status, router]);
+
+  // ── Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // ── Focus input
+  useEffect(() => {
+    if (!pageLoading) inputRef.current?.focus();
+  }, [pageLoading]);
+
+  // ── Search handler (continues existing session)
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
-
     if (isSubmittingRef.current) return;
 
     const safeQuery = sanitizePlainText(query.trim());
@@ -332,32 +282,6 @@ export default function Home() {
     plansRef.current = [];
     setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
     setQuery("");
-
-    // ── 送出前先建立 session，取得 ID 後立即更新 URL──
-    let sid = currentSessionId;
-    let isNewSession = false;
-    if (!sid && session?.user?.email) {
-      try {
-        const sessionRes = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: session.user.id,
-            user_email: session.user.email,
-            messages: [{ role: "user", content: safeQuery }],
-          }),
-        });
-        if (sessionRes.ok) {
-          const sessionData = await sessionRes.json();
-          sid = sessionData.id;
-          setCurrentSessionId(sessionData.id);
-          window.history.pushState({}, "", `/${locale}/session/${sessionData.id}`);
-          isNewSession = true;
-        }
-      } catch {
-        // session 建立失敗不阻止搜尋
-      }
-    }
 
     try {
       const res = await fetch("/api/web-search", {
@@ -387,11 +311,7 @@ export default function Home() {
           const payload = line.slice(6).trim();
           if (!payload) continue;
           let event: Record<string, unknown>;
-          try {
-            event = JSON.parse(payload);
-          } catch {
-            continue;
-          }
+          try { event = JSON.parse(payload); } catch { continue; }
 
           if (event.type === "routing") {
             plansRef.current = [{ sort: 1, plan: "routing: 分析問題決策工具" }];
@@ -404,16 +324,17 @@ export default function Home() {
             plansRef.current = [...plansRef.current, { sort: 3, plan: "executing: 生成答案" }];
             setLoadingStep(2);
           } else if (event.type === "done") {
-            const newAiMsg: ChatMessage = {
-              role: "ai",
+            const newAiMsg: DisplayMessage = {
+              role: "assistant",
               content: event.answer as string,
-              sources: event.sources as SearchSource[],
+              sources: event.sources as Source[],
               search_query: event.search_query as string,
               tool_used: event.tool_used as string,
             };
             setMessages((prev) => [...prev, newAiMsg]);
 
-            if (session?.user?.email && sid) {
+            // Append to existing session
+            if (session?.user?.email) {
               const aiPayload = {
                 role: "assistant",
                 content: newAiMsg.content,
@@ -423,36 +344,23 @@ export default function Home() {
                 sources: newAiMsg.sources ?? [],
                 plans: plansRef.current,
               };
-
-              (async () => {
-                try {
-                  // 新 session：user 訊息已在建立時存入，這裡只追加 AI 回應
-                  // 既有 session：同時追加 user 與 AI
-                  const messagesToSave = isNewSession
-                    ? [aiPayload]
-                    : [{ role: "user", content: safeQuery }, aiPayload];
-
-                  await fetch(`/api/sessions/${sid}/messages`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ messages: messagesToSave }),
-                  });
-
-                  window.dispatchEvent(new CustomEvent("conversation-saved"));
-                  fetch(`/api/sessions/${sid}/title`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      user_message: safeQuery,
-                      assistant_message: newAiMsg.content,
-                    }),
-                  })
-                    .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
-                    .catch(() => {});
-                } catch {
-                  // 儲存失敗不影響主流程
-                }
-              })();
+              fetch(`/api/sessions/${sessionId}/messages`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  messages: [{ role: "user", content: safeQuery }, aiPayload],
+                }),
+              }).catch(() => {});
+              fetch(`/api/sessions/${sessionId}/title`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  user_message: safeQuery,
+                  assistant_message: newAiMsg.content,
+                }),
+              })
+                .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
+                .catch(() => {});
             }
 
             break outer;
@@ -462,13 +370,7 @@ export default function Home() {
         }
       }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "error",
-          content: err instanceof Error ? err.message : t("errorGeneric"),
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "error", content: err instanceof Error ? err.message : t("errorGeneric") }]);
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
@@ -476,66 +378,53 @@ export default function Home() {
     }
   };
 
-  if (status === "loading") {
+  const px = collapsed ? "px-6" : "px-4 sm:px-6";
+
+  // ── Auth / page loading
+  if (status === "loading" || pageLoading) {
     return (
       <main className="flex items-center justify-center min-h-screen bg-[var(--background)]">
         <svg className="animate-spin w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
         </svg>
       </main>
     );
   }
 
-  if (status === "unauthenticated") {
-    return <LoginGate />;
+  if (pageError) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] gap-4">
+        <p className="text-sm text-[var(--muted)]">{pageError}</p>
+        <button onClick={() => router.push("/")} className="text-sm text-indigo-500 hover:underline">
+          返回首頁
+        </button>
+      </main>
+    );
   }
-
-  const hasMessages = messages.length > 0;
-  const px = collapsed ? "px-6" : "px-4 sm:px-6";
 
   return (
     <main className="flex flex-col min-h-screen bg-[var(--background)]">
-      {/* Fixed title — 緊靠 sidebar 右側，垂直置中於 h-14 */}
+      {/* Fixed title — 緊靠 sidebar 右側 */}
       <div
-        className={`fixed top-0 z-10 flex items-center gap-2.5 h-14 px-4 transition-all duration-300 ${
+        className={`fixed top-0 z-10 flex items-center h-14 px-4 transition-all duration-300 ${
           collapsed ? 'left-16' : 'left-[80vw] md:left-56'
         }`}
       >
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow shadow-indigo-500/30 flex-shrink-0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-        </div>
-        <h1 className="text-lg font-bold text-[var(--foreground)] leading-tight whitespace-nowrap">
-          {t("title")}
+        <h1 className="text-base font-semibold text-[var(--foreground)] leading-tight whitespace-nowrap">
+          {sessionTitle}
         </h1>
       </div>
 
       {/* Messages area */}
       <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-36 space-y-6 ${px}`}>
-        {/* Empty state */}
-        {!hasMessages && !loading && (
-          <div className="flex flex-col items-center justify-center py-24 text-[var(--muted)]">
-            <Search className="w-12 h-12 mb-4 opacity-30" />
-            <p className="text-sm">{t("emptyState")}</p>
-            <p className="text-xs mt-1 opacity-60">{t("hint")}</p>
-          </div>
-        )}
-
-        {/* Chat messages */}
         {messages.map((msg, idx) => {
           if (msg.role === "user") {
             return (
               <div key={idx} className="flex justify-end">
                 <div
-                  className="max-w-[80%] px-5 py-3 rounded-2xl text-sm leading-relaxed break-words select-text"
-                  style={{
-                    backgroundColor: "rgb(99 102 241 / 0.12)",
-                    color: "inherit",
-                    borderRadius: "16px 16px 16px 16px",
-                  }}
+                  className="max-w-[80%] px-5 py-3 text-sm leading-relaxed break-words select-text"
+                  style={{ backgroundColor: "rgb(99 102 241 / 0.12)", borderRadius: "16px 16px 16px 16px" }}
                 >
                   <span className="text-gray-800 dark:text-gray-100">{msg.content}</span>
                 </div>
@@ -551,23 +440,18 @@ export default function Home() {
             );
           }
 
-          // AI message
+          // assistant
+          const meta = msg.tool_used ? TOOL_META[msg.tool_used] : null;
           return (
             <div key={idx} className="space-y-4">
-              {/* AI header */}
               <div className="flex items-center gap-2 flex-wrap">
                 <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                 <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
-
-                {/* Tool used badge */}
-                {msg.tool_used && TOOL_META[msg.tool_used] && (
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${TOOL_META[msg.tool_used].color}`}>
-                    {TOOL_META[msg.tool_used].icon}
-                    {TOOL_META[msg.tool_used].label}
+                {meta && (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${meta.color}`}>
+                    {meta.icon}{meta.label}
                   </span>
                 )}
-
-                {/* Search query badge (web_search only) */}
                 {msg.tool_used === "web_search" && msg.search_query && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                     {msg.search_query}
@@ -575,25 +459,21 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Answer content */}
               <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
                 <AnswerBlock text={msg.content} />
               </div>
 
-              {/* Sources */}
               {msg.sources && msg.sources.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
                     </svg>
                     {t("sources")}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {msg.sources.map((s, i) => (
-                      <SourceCard key={i} source={s} index={i} />
-                    ))}
+                    {msg.sources.map((s, i) => <SourceCard key={i} source={s} index={i} />)}
                   </div>
                 </div>
               )}
@@ -601,7 +481,6 @@ export default function Home() {
           );
         })}
 
-        {/* Loading state inline in chat */}
         {loading && <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />}
 
         <div ref={messagesEndRef} />
@@ -617,10 +496,7 @@ export default function Home() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSearch();
-                }
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSearch(); }
               }}
               placeholder={t("placeholder")}
               disabled={loading}
@@ -634,13 +510,13 @@ export default function Home() {
             >
               {loading ? (
                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                 </svg>
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                  <polyline points="12 5 19 12 12 19"/>
                 </svg>
               )}
             </button>

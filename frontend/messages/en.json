@@ -6,13 +6,13 @@
   "nav": {
     "profile": "About",
     "mentalHealth": "Taiwan Mental Health Resources",
-    "webSearch": "AI Web Search"
+    "webSearch": "New Conversation"
   },
   "sidebar": {
     "author": "Ottis Chang",
     "expand": "Expand menu",
     "collapse": "Collapse menu",
-    "footer": "© 2025 Ottis Chang"
+    "footer": "© 2026 Ottis Chang"
   },
   "themeToggle": {
     "toDark": "Switch to dark mode",
@@ -29,7 +29,7 @@
     "footer": "© {year} Personal Website. Built with React, Next.js & FastAPI."
   },
   "webSearch": {
-    "title": "Ottis AI Web Search",
+    "title": "Ottis AI Search",
     "subtitle": "Powered by Gemini with built-in Google Search",
     "placeholder": "Ask AI anything",
     "searchBtn": "Search",

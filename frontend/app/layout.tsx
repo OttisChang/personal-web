@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import './globals.css';
+import SessionProviderWrapper from './components/SessionProviderWrapper';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased"
         suppressHydrationWarning
       >
-        {children}
+        <SessionProviderWrapper>{children}</SessionProviderWrapper>
       </body>
     </html>
   );
