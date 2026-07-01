@@ -5,12 +5,15 @@ import { useTranslations } from "next-intl";
 import { useSession, signIn } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BotMessageSquare, Search } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
+  // 伺服器端沒有 window，DOMPurify 在 SSR 時不可用；直接回傳原文字即可，
+  // React 本身會自動轉義文字內容，client 端 hydrate 後才需要真正的淨化
+  if (!DOMPurify.isSupported) return input;
   return DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
 }
 

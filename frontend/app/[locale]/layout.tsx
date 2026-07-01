@@ -10,7 +10,6 @@ import LocaleHtmlUpdater from '../components/LocaleHtmlUpdater';
 import Sidebar from '../components/Sidebar';
 import MainContent from '../components/MainContent';
 import { SidebarProvider } from '../contexts/SidebarContext';
-import SidebarSessionSync from '../components/SidebarSessionSync';
 
 type Props = {
   children: ReactNode;
@@ -45,7 +44,6 @@ export default async function LocaleLayout({ children, params }: Props) {
       <ThemeToggle />
       <LanguageSwitcher />
       <SidebarProvider>
-        <SidebarSessionSync />
         <div className="h-screen overflow-hidden">
           <Sidebar />
           <MainContent>{children}</MainContent>

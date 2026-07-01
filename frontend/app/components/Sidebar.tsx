@@ -22,8 +22,9 @@ export default function Sidebar() {
   const { collapsed, toggle } = useSidebar();
   const tNav = useTranslations('nav');
   const tSidebar = useTranslations('sidebar');
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [toast, setToast] = useState(false);
 
@@ -41,15 +42,21 @@ export default function Sidebar() {
       }
     } catch (err) {
       console.error('[Sidebar] fetchConversations error:', err);
+    } finally {
+      setIsLoadingConversations(false);
     }
   };
 
-  // 頁面載入時撈一次
+  // 頁面載入時撈一次；等 NextAuth session 狀態確定後才判斷是否要撈資料，避免登入狀態還沒解析完就誤判成「尚無對話紀錄」
   useEffect(() => {
-    if (!isWebSearch || !session?.user?.email) return;
+    if (!isWebSearch || status === 'loading') return;
+    if (!session?.user?.email) {
+      setIsLoadingConversations(false);
+      return;
+    }
     fetchConversations(session.user.email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isWebSearch, session?.user?.email]);
+  }, [isWebSearch, status, session?.user?.email]);
 
   // 儲存後重新載入
   useEffect(() => {
@@ -194,7 +201,16 @@ export default function Sidebar() {
               </span>
             </div>
             <ul className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-2">
-              {conversations.length === 0 ? (
+              {isLoadingConversations ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <li key={i} className="px-3 py-2.5">
+                    <div
+                      className="h-3.5 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse"
+                      style={{ width: `${85 - i * 10}%` }}
+                    />
+                  </li>
+                ))
+              ) : conversations.length === 0 ? (
                 <li className="px-3 py-2 text-xs text-[var(--muted)]">
                   {session?.user ? '尚無對話紀錄' : '登入後儲存對話'}
                 </li>
@@ -216,7 +232,7 @@ export default function Sidebar() {
                       ) : (
                         <Clock4 className="flex-shrink-0 text-[var(--muted)]" width="16" height="16" />
                       )}
-                      <span className="line-clamp-2 leading-snug break-all">{conv.title}</span>
+                      <span className="truncate">{conv.title}</span>
                     </Link>
                     <button
                       type="button"
