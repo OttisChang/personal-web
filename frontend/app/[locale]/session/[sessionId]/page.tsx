@@ -286,11 +286,16 @@ export default function SessionPage() {
     setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
     setQuery("");
 
+    // 帶入先前的問答紀錄，讓後端具備同一 session 的上下文記憶
+    const history = messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role, content: m.content }));
+
     try {
       const res = await fetch("/api/web-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: safeQuery }),
+        body: JSON.stringify({ query: safeQuery, history }),
       });
 
       if (!res.ok || !res.body) {
@@ -347,19 +352,12 @@ export default function SessionPage() {
                 sources: newAiMsg.sources ?? [],
                 plans: plansRef.current,
               };
+              // 標題已在建立 session 的第一輪自動命名過，這裡只需要追加訊息
               fetch(`/api/sessions/${sessionId}/messages`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   messages: [{ role: "user", content: safeQuery }, aiPayload],
-                }),
-              }).catch(() => {});
-              fetch(`/api/sessions/${sessionId}/title`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  user_message: safeQuery,
-                  assistant_message: newAiMsg.content,
                 }),
               })
                 .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))

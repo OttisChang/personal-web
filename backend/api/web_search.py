@@ -39,8 +39,13 @@ def _execute_web_search(query: str) -> list[dict]:
     return results
 
 
+class HistoryTurn(BaseModel):
+    role: str
+    content: str
+
 class WebSearchRequest(BaseModel):
     query: str
+    history: List[HistoryTurn] = []
 
 class SearchSource(BaseModel):
     title: str
@@ -93,6 +98,9 @@ async def web_search_endpoint(body: WebSearchRequest):
     if _groq is None:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY 未設定。請在 backend/.env 設定。")
 
+    # 只保留最近幾輪對話作為上下文，避免 prompt 無限增長
+    history_messages = [{"role": h.role, "content": h.content} for h in body.history][-12:]
+
     async def generate():
         import asyncio
         model = "llama-3.3-70b-versatile"
@@ -104,6 +112,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                 model=model,
                 messages=[
                     {"role": "system", "content": _ROUTING_SYSTEM},
+                    *history_messages,
                     {"role": "user", "content": body.query},
                 ],
                 response_format={"type": "json_object"},
@@ -131,6 +140,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                 search_label = city
                 answer_messages = [
                     {"role": "system", "content": f"你是天氣助手，請根據以下即時天氣資料友善地回答使用者。{_ZH_TW}"},
+                    *history_messages,
                     {"role": "user", "content": f"問題：{body.query}\n\n天氣資料：\n{tool_result}"},
                 ]
 
@@ -141,6 +151,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                 search_label = city
                 answer_messages = [
                     {"role": "system", "content": f"你是天氣預報助手，請根據以下中央氣象署預報資料友善地回答使用者的問題。{_ZH_TW}"},
+                    *history_messages,
                     {"role": "user", "content": f"問題：{body.query}\n\n預報資料：\n{tool_result}"},
                 ]
 
@@ -152,6 +163,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                 search_label = "玉山銀行匯率"
                 answer_messages = [
                     {"role": "system", "content": f"你是匯率助手，請根據以下玉山銀行牌告匯率資料回答使用者的問題，只需回答與問題相關的幣別即可。{_ZH_TW}"},
+                    *history_messages,
                     {"role": "user", "content": f"問題：{body.query}\n\n匯率資料：{tool_result}"},
                 ]
 
@@ -166,6 +178,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                 search_label = search_query
                 answer_messages = [
                     {"role": "system", "content": f"你是一個 AI 助手，請根據以下搜尋結果詳細回答使用者的問題。{_ZH_TW}"},
+                    *history_messages,
                     {"role": "user", "content": f"問題：{body.query}\n\n搜尋結果：\n{context}"},
                 ]
 

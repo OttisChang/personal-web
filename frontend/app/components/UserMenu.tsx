@@ -1,6 +1,6 @@
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 export default function UserMenu() {
   const { data: session, status } = useSession()
@@ -18,7 +18,16 @@ export default function UserMenu() {
   }
 
   if (!session) {
-    return null;
+    return (
+      <div className="px-3 py-2">
+        <button
+          onClick={() => signIn("google")}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        >
+          訪客模式（登入以儲存對話）
+        </button>
+      </div>
+    );
   }
 
   return (

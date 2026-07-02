@@ -154,6 +154,8 @@ function AnswerBlock({ text }: { text: string }) {
   );
 }
 
+const GUEST_TURN_LIMIT = 3;
+
 type CalledTool = { tool: string; label: string };
 
 function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string) => string }) {
@@ -248,7 +250,7 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   );
 }
 
-function LoginGate() {
+function LoginGate({ onGuest }: { onGuest: () => void }) {
   const [signingIn, setSigningIn] = useState(false);
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-4">
@@ -290,6 +292,26 @@ function LoginGate() {
           )}
           <span>{signingIn ? "登入中..." : "使用 Google 登入"}</span>
         </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-[var(--border)]" />
+          <span className="text-xs text-[var(--muted)]">或</span>
+          <div className="flex-1 h-px bg-[var(--border)]" />
+        </div>
+
+        {/* Guest continue button */}
+        <div className="space-y-2">
+          <button
+            onClick={onGuest}
+            className="w-full px-5 py-3 rounded-xl text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent hover:border-[var(--border)] transition-colors"
+          >
+            以訪客身份繼續
+          </button>
+          <p className="text-xs text-[var(--muted)] leading-relaxed">
+            訪客模式無需登入即可使用，但對話紀錄不會被儲存
+          </p>
+        </div>
       </div>
     </main>
   );
@@ -307,6 +329,7 @@ export default function Home() {
   const [calledTool, setCalledTool] = useState<CalledTool | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [guestMode, setGuestMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef<boolean>(false);
@@ -317,13 +340,50 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (sessionStorage.getItem("guestMode") === "1") setGuestMode(true);
+
+    // signIn() 會整頁導轉到 Google 再導回來，React state（包含 messages）會被重置，
+    // 所以訪客對話要先暫存在 sessionStorage，回來後在這裡復原
+    const savedGuestMessages = sessionStorage.getItem("guestMessages");
+    if (savedGuestMessages) {
+      try {
+        setMessages(JSON.parse(savedGuestMessages));
+      } catch {
+        // 忽略解析失敗
+      }
+      sessionStorage.removeItem("guestMessages");
+    }
+  }, []);
+
+  const handleContinueAsGuest = () => {
+    sessionStorage.setItem("guestMode", "1");
+    setGuestMode(true);
+  };
+
+  const handleGuestSignIn = () => {
+    sessionStorage.setItem("guestMessages", JSON.stringify(messages));
+    signIn("google");
+  };
+
+  // 訪客登入成功後解除訪客模式限制；對話內容保留，會在下一次提問時連同新 session 一併存入 DB
+  useEffect(() => {
+    if (status === "authenticated" && guestMode) {
+      sessionStorage.removeItem("guestMode");
+      setGuestMode(false);
+    }
+  }, [status, guestMode]);
+
+  const guestQuestionCount = messages.filter((m) => m.role === "user").length;
+  const guestLimitReached = guestMode && guestQuestionCount >= GUEST_TURN_LIMIT;
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    if (isSubmittingRef.current) return;
+    if (isSubmittingRef.current || guestLimitReached) return;
 
     const safeQuery = sanitizePlainText(query.trim());
     if (!safeQuery) return;
@@ -336,7 +396,23 @@ export default function Home() {
     setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
     setQuery("");
 
-    // ── 送出前先建立 session，取得 ID 後立即更新 URL──
+    // ── 送出前先建立 session，取得 ID 後立即更新 URL
+    // 若先前有訪客模式問過的對話（尚未存檔），一併帶入這個新 session
+    const priorMessages = messages
+      .filter((m) => m.role === "user" || m.role === "ai")
+      .map((m) =>
+        m.role === "ai"
+          ? {
+              role: "assistant",
+              content: m.content,
+              model_name: "llama-3.3-70b-versatile",
+              tool_used: m.tool_used ?? null,
+              search_query: m.search_query ?? null,
+              sources: m.sources ?? [],
+            }
+          : { role: "user", content: m.content }
+      );
+
     let sid = currentSessionId;
     let isNewSession = false;
     if (!sid && session?.user?.email) {
@@ -347,7 +423,7 @@ export default function Home() {
           body: JSON.stringify({
             user_id: session.user.id,
             user_email: session.user.email,
-            messages: [{ role: "user", content: safeQuery }],
+            messages: [...priorMessages, { role: "user", content: safeQuery }],
           }),
         });
         if (sessionRes.ok) {
@@ -362,11 +438,16 @@ export default function Home() {
       }
     }
 
+    // 帶入先前的問答紀錄，讓後端具備同一 session 的上下文記憶
+    const history = messages
+      .filter((m) => m.role === "user" || m.role === "ai")
+      .map((m) => ({ role: m.role === "ai" ? "assistant" : "user", content: m.content }));
+
     try {
       const res = await fetch("/api/web-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: safeQuery }),
+        body: JSON.stringify({ query: safeQuery, history }),
       });
 
       if (!res.ok || !res.body) {
@@ -442,16 +523,23 @@ export default function Home() {
                   });
 
                   window.dispatchEvent(new CustomEvent("conversation-saved"));
-                  fetch(`/api/sessions/${sid}/title`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      user_message: safeQuery,
-                      assistant_message: newAiMsg.content,
-                    }),
-                  })
-                    .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
-                    .catch(() => {});
+
+                  // 標題只在建立 session 的第一輪（含訪客登入後補存的第一輪）自動命名一次，
+                  // 並帶入完整對話（含訪客期間的前幾輪），讓標題涵蓋整段脈絡而非只有最新一輪
+                  if (isNewSession) {
+                    const fullConversation = [
+                      ...history,
+                      { role: "user", content: safeQuery },
+                      { role: "assistant", content: newAiMsg.content },
+                    ];
+                    fetch(`/api/sessions/${sid}/title`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ messages: fullConversation }),
+                    })
+                      .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
+                      .catch(() => {});
+                  }
                 } catch {
                   // 儲存失敗不影響主流程
                 }
@@ -490,8 +578,8 @@ export default function Home() {
     );
   }
 
-  if (status === "unauthenticated") {
-    return <LoginGate />;
+  if (status === "unauthenticated" && !guestMode) {
+    return <LoginGate onGuest={handleContinueAsGuest} />;
   }
 
   const hasMessages = messages.length > 0;
@@ -613,6 +701,17 @@ export default function Home() {
       {/* Fixed bottom input bar */}
       <div className="fixed bottom-0 left-16 right-0 bg-[var(--card)] border-t border-[var(--border)] py-4">
         <div className={`max-w-2xl mx-auto pl-[2px] pr-4 sm:pr-6`}>
+          {guestLimitReached ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-center sm:text-left">
+              <p className="text-sm text-[var(--muted)]">訪客模式已達 {GUEST_TURN_LIMIT} 輪對話上限，請登入以繼續</p>
+              <button
+                onClick={handleGuestSignIn}
+                className="flex-shrink-0 w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
+              >
+                使用 Google 登入
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSearch} className="relative">
             <input
               ref={inputRef}
@@ -648,6 +747,7 @@ export default function Home() {
               )}
             </button>
           </form>
+          )}
         </div>
       </div>
     </main>

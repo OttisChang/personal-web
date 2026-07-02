@@ -23,17 +23,21 @@ def _make_groq_client() -> Optional[OpenAI]:
 _groq = _make_groq_client()
 
 
-async def _generate_session_title(user_message: str, assistant_message: str) -> str:
+async def _generate_session_title(turns: "List[ConversationTurn]") -> str:
     if _groq is None:
         return "新對話"
     try:
-        prompt = f"""根據以下對話內容，生成一個簡短的標題，要求：
+        transcript = "\n".join(
+            f"{'用戶' if t.role == 'user' else 'AI'}：{t.content[:300]}"
+            for t in turns[-16:]
+        )
+        prompt = f"""根據以下完整對話內容，生成一個簡短的標題，要求：
 1. 最多 10 個中文字（2 個英文字算 1 個中文字）
-2. 簡潔明瞭，能概括對話主題
+2. 簡潔明瞭，能概括整段對話主題
 3. 只返回標題，不要其他說明
 
-用戶問題：{user_message}
-AI 回應：{assistant_message[:200]}
+對話內容：
+{transcript}
 
 標題："""
         resp = _groq.chat.completions.create(
@@ -48,6 +52,10 @@ AI 回應：{assistant_message[:200]}
         logger.error(f"Title generation failed: {e}")
         return "新對話"
 
+
+class ConversationTurn(BaseModel):
+    role: str
+    content: str
 
 class PlanItem(BaseModel):
     sort: int
@@ -77,8 +85,7 @@ class AddMessagesRequest(BaseModel):
     messages: List[MessageItem]
 
 class GenerateTitleRequest(BaseModel):
-    user_message: str
-    assistant_message: str
+    messages: List[ConversationTurn]
 
 
 @router.post("/api/sessions")
@@ -232,10 +239,10 @@ async def generate_session_title(session_id: str, body: GenerateTitleRequest):
     if session.get("is_defined_title", False):
         return {"ok": True, "skipped": True}
 
-    title = await _generate_session_title(body.user_message, body.assistant_message)
+    title = await _generate_session_title(body.messages)
     await db.chat_sessions.update_one(
         {"_id": session_id},
-        {"$set": {"title": title, "updated_at": datetime.now(timezone.utc)}},
+        {"$set": {"title": title, "is_defined_title": True, "updated_at": datetime.now(timezone.utc)}},
     )
     return {"ok": True, "title": title}
 
