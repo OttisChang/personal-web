@@ -4,6 +4,7 @@ from typing import Literal
 AgentKind = Literal["tool_agent", "sub_agent"]
 
 _ZH_TW = "請務必使用繁體中文（Traditional Chinese）回答，不要使用簡體中文或英文。"
+_TABLE_HINT = "若使用者的問題提到「比較」或要求「表格」，請改用 Markdown 表格呈現回答內容。"
 
 
 @dataclass(frozen=True)
@@ -24,7 +25,7 @@ weather_agent = Agent(
     description="查詢城市「即時」天氣，或台灣縣市「未來」天氣預報",
     kind="tool_agent",
     tools=("get_weather", "get_weather_forecast"),
-    instruction=f"你是天氣助手，請根據以下天氣資料友善地回答使用者。{_ZH_TW}",
+    instruction=f"你是天氣助手，請根據以下天氣資料友善地回答使用者。{_TABLE_HINT}{_ZH_TW}",
     judging_hints=(
         "問「現在/目前/今天即時」天氣 → weather_agent, tool=get_weather",
         "問「明天/後天/週末/未來」天氣或「會不會下雨（非即時）」 → weather_agent, tool=get_weather_forecast",
@@ -41,7 +42,7 @@ financial_agent = Agent(
     description="查詢玉山銀行即時外幣牌告匯率（美金、日圓、歐元、港幣、人民幣等）",
     kind="tool_agent",
     tools=("esun_exchange_rate",),
-    instruction=f"你是匯率助手，請根據以下玉山銀行牌告匯率資料回答使用者的問題，只需回答與問題相關的幣別即可。{_ZH_TW}",
+    instruction=f"你是匯率助手，請根據以下玉山銀行牌告匯率資料回答使用者的問題，只需回答與問題相關的幣別即可。{_TABLE_HINT}{_ZH_TW}",
     judging_hints=("問匯率/外幣 → financial_agent",),
     routing_examples=('{"agent": "financial_agent"}',),
 )
@@ -52,7 +53,7 @@ web_search_agent = Agent(
     description="網路搜尋，適用於其他一般問題",
     kind="tool_agent",
     tools=("web_search",),
-    instruction=f"你是一個 AI 助手，請根據以下搜尋結果詳細回答使用者的問題。{_ZH_TW}",
+    instruction=f"你是一個 AI 助手，請根據以下搜尋結果詳細回答使用者的問題。{_TABLE_HINT}{_ZH_TW}",
     judging_hints=("以上皆不符合的一般問題 → web_search（預設）",),
     routing_examples=('{"agent": "web_search", "search_query": "最佳搜尋關鍵字"}',),
 )
@@ -69,6 +70,7 @@ TRAVEL_BRAINSTORMER_INSTRUCTION = f"""你是「旅遊目的地發想助手」，
   已經轉移到景點規劃，請將 stay 設為 false。
 - 若使用者的問題明顯與旅遊目的地選擇無關（例如查天氣、查匯率、閒聊其他主題），請將 stay 設為 false。
 - 除上述情況外，只要對話仍圍繞在「還沒決定要去哪裡玩」，請將 stay 設為 true，持續以本角色回覆。
+- {_TABLE_HINT}（表格內容寫在 reply 欄位的文字裡）。
 
 請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
 {{"reply": "你給使用者的完整回覆文字", "stay": true 或 false}}
@@ -90,6 +92,7 @@ ATTRACTIONS_PLANNER_INSTRUCTION = f"""你是「景點規劃助手」，使用者
   設為 false。
 - 除上述情況外，只要對話仍圍繞在「這個目的地要去哪些景點/怎麼安排行程」，請將 stay 設為 true，
   持續以本角色回覆。
+- {_TABLE_HINT}（表格內容寫在 reply 欄位的文字裡）。
 
 請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
 {{"reply": "你給使用者的完整回覆文字", "stay": true 或 false, "attractions_add": ["景點名稱1", "景點名稱2"]}}

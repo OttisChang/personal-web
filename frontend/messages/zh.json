@@ -30,7 +30,7 @@
   },
   "webSearch": {
     "title": "Ottis AI 網路搜尋",
-    "subtitle": "由 Gemini 模型驅動，結合 Google Search 與即時網路搜尋",
+    "subtitle": "由 Groq 驅動，結合即時網路搜尋",
     "placeholder": "請輸入問題，可詢問天氣、匯率或旅遊景點規劃等資訊",
     "placeholderShort": "請詢問天氣、匯率或旅遊景點",
     "searchBtn": "搜尋",
@@ -45,7 +45,7 @@
     "stepSearch": "工具執行中",
     "stepAnalyze": "分析搜尋結果",
     "stepGenerate": "生成回答中...",
-    "thinkingProcess": "思考過程",
+    "thinkingProcess": "思考歷程",
     "toolInvoked": "調用 {tool}",
     "loginTitle": "Ottis AI 搜尋",
     "loginSubtitle": "可使用 AI 網路搜尋、天氣查詢與即時匯率等功能",

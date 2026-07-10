@@ -30,7 +30,7 @@
   },
   "webSearch": {
     "title": "Ottis AI Search",
-    "subtitle": "Powered by Gemini with built-in Google Search",
+    "subtitle": "Powered by Groq, with real-time web search",
     "placeholder": "Ask about weather, exchange rates, or travel planning",
     "placeholderShort": "Ask weather, rates, or travel",
     "searchBtn": "Search",

@@ -111,6 +111,10 @@ function SourceCard({ source, index }: { source: SearchSource; index: number }) 
   );
 }
 
+function normalizeMarkdownHeadings(text: string): string {
+  return text.replace(/^(#{1,6})(?=[^\s#])/gm, "$1 ");
+}
+
 function AnswerBlock({ text }: { text: string }) {
   return (
     <ReactMarkdown
@@ -154,9 +158,29 @@ function AnswerBlock({ text }: { text: string }) {
           </code>
         ),
         hr: () => <hr className="border-gray-200 dark:border-gray-700 my-3" />,
+        table: ({ children }) => (
+          <div className="overflow-x-auto mb-3 last:mb-0 rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full text-sm text-left border-collapse">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>
+        ),
+        tbody: ({ children }) => (
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{children}</tbody>
+        ),
+        tr: ({ children }) => <tr>{children}</tr>,
+        th: ({ children }) => (
+          <th className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="px-3 py-2 text-gray-700 dark:text-gray-300 align-top">{children}</td>
+        ),
       }}
     >
-      {text}
+      {normalizeMarkdownHeadings(text)}
     </ReactMarkdown>
   );
 }
@@ -270,11 +294,11 @@ function ThinkingProcess({ plans, t }: { plans?: PlanItem[]; t: (key: string, va
   const sorted = [...plans].sort((a, b) => a.sort - b.sort);
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+    <div className="inline-block w-fit max-w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
       >
         <svg
           width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -285,9 +309,9 @@ function ThinkingProcess({ plans, t }: { plans?: PlanItem[]; t: (key: string, va
         <span>{t("thinkingProcess")}</span>
       </button>
       {open && (
-        <div className="px-4 pb-3 pt-2.5 space-y-2 border-t border-[var(--border)]">
+        <div className="px-3 pb-3 pt-2.5 space-y-2 border-t border-[var(--border)]">
           {sorted.map((p, i) => (
-            <div key={i} className="flex items-center gap-2.5 text-xs text-gray-500 dark:text-gray-400">
+            <div key={i} className="flex items-center gap-2.5 text-sm text-gray-500 dark:text-gray-400">
               <span className="w-4 h-4 rounded-full bg-green-500 text-white flex items-center justify-center flex-shrink-0">
                 <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               </span>
