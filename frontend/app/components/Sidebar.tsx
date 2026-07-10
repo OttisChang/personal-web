@@ -200,7 +200,7 @@ export default function Sidebar() {
                 對話紀錄
               </span>
             </div>
-            <ul className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-2">
+            <ul className="flex-1 overflow-y-auto scrollbar-thin px-2 space-y-0.5 pb-2">
               {isLoadingConversations ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <li key={i} className="px-3 py-2.5">

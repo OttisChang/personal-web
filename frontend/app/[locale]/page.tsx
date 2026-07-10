@@ -381,7 +381,7 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [guestMode, setGuestMode] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef<boolean>(false);
   const plansRef = useRef<{ sort: number; plan: string }[]>([]);
@@ -392,6 +392,14 @@ export default function Home() {
     inputRef.current?.focus();
     if (window.matchMedia("(max-width: 640px)").matches) setIsMobile(true);
   }, []);
+
+  // 輸入框高度隨內容自動擴展，最高 200px
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [query]);
 
   useEffect(() => {
     if (sessionStorage.getItem("guestMode") === "1") setGuestMode(true);
@@ -663,6 +671,9 @@ export default function Home() {
 
   return (
     <main className="flex flex-col min-h-screen bg-[var(--background)]">
+      {/* 頂部遮罩層 — 避免對話內容捲動時與標題列/按鈕重疊 */}
+      <div className="header-fade-mask fixed top-0 left-0 right-4 z-[5] h-24 pointer-events-none" />
+
       {/* Fixed title — 緊靠 sidebar 右側，垂直置中於 h-14 */}
       <div
         className={`fixed top-0 z-10 flex items-center gap-2.5 h-14 px-4 transition-all duration-300 ${
@@ -681,7 +692,7 @@ export default function Home() {
       </div>
 
       {/* Messages area */}
-      <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-36 space-y-6 ${px}`}>
+      <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-64 space-y-6 ${px}`}>
         {/* Empty state */}
         {!hasMessages && !loading && (
           <div className="flex flex-col items-center justify-center py-24 text-[var(--muted)]">
@@ -778,7 +789,7 @@ export default function Home() {
       </div>
 
       {/* Fixed bottom input bar */}
-      <div className="fixed bottom-0 left-16 right-0 bg-[var(--card)] border-t border-[var(--border)] py-4">
+      <div className="fixed bottom-0 left-16 right-0 footer-fade-mask pt-8 pb-4">
         <div className={`max-w-2xl mx-auto pl-[2px] pr-4 sm:pr-6`}>
           {guestLimitReached ? (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-center sm:text-left">
@@ -792,9 +803,8 @@ export default function Home() {
             </div>
           ) : (
           <form onSubmit={handleSearch} className="relative">
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -805,13 +815,14 @@ export default function Home() {
               }}
               placeholder={isMobile ? t("placeholderShort") : t("placeholder")}
               disabled={loading}
-              className="w-full pl-6 py-3.5 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
+              rows={1}
+              className="w-full pl-6 py-3.5 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm resize-none overflow-y-auto max-h-[200px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
             />
             <button
               type={loading ? "button" : "submit"}
               onClick={loading ? handleStop : undefined}
               disabled={!loading && !query.trim()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white disabled:text-gray-400 transition-colors flex items-center justify-center"
+              className="absolute right-4 bottom-3 w-9 h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white disabled:text-gray-400 transition-colors flex items-center justify-center"
               aria-label={loading ? t("stopBtn") : t("searchBtn")}
             >
               {loading ? (

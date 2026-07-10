@@ -29,7 +29,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* 永遠預留直向捲軸空間，避免開關時左右晃動（參考 ） */
+  /* 永遠預留直向捲軸空間，避免開關時左右晃動 */
   scrollbar-gutter: stable;
 }
 
@@ -45,51 +45,95 @@ body {
 }
 
 /* =====================================================
-   全局滾動條樣式（參考  navy 色系）
+   全局滾動條樣式
+   涵蓋 html/body、頁面主要捲動容器 <main> 及 <textarea>
    ===================================================== */
+html,
+body,
+main,
+textarea {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d6de transparent;
+}
+
+.dark html,
+.dark body,
+.dark main,
+.dark textarea {
+  scrollbar-color: #4c5466 transparent;
+}
+
 html::-webkit-scrollbar,
-body::-webkit-scrollbar {
+body::-webkit-scrollbar,
+main::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
   width: 6px;
   transition: width 0.2s;
 }
 
 html::-webkit-scrollbar:hover,
-body::-webkit-scrollbar:hover {
+body::-webkit-scrollbar:hover,
+main::-webkit-scrollbar:hover,
+textarea::-webkit-scrollbar:hover {
   width: 8px;
 }
 
 html::-webkit-scrollbar-track,
-body::-webkit-scrollbar-track {
+body::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track {
   background: transparent;
 }
 
 html::-webkit-scrollbar-thumb,
-body::-webkit-scrollbar-thumb {
+body::-webkit-scrollbar-thumb,
+main::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb {
   background: #d0d6de;
   border-radius: 3px;
 }
 
 html::-webkit-scrollbar-thumb:hover,
-body::-webkit-scrollbar-thumb:hover {
+body::-webkit-scrollbar-thumb:hover,
+main::-webkit-scrollbar-thumb:hover,
+textarea::-webkit-scrollbar-thumb:hover {
   background: #8994a5;
 }
 
 /* Dark mode scrollbar */
 .dark html::-webkit-scrollbar-thumb,
-.dark body::-webkit-scrollbar-thumb {
+.dark body::-webkit-scrollbar-thumb,
+.dark main::-webkit-scrollbar-thumb,
+.dark textarea::-webkit-scrollbar-thumb {
   background: #4c5466;
 }
 
 .dark html::-webkit-scrollbar-thumb:hover,
-.dark body::-webkit-scrollbar-thumb:hover {
+.dark body::-webkit-scrollbar-thumb:hover,
+.dark main::-webkit-scrollbar-thumb:hover,
+.dark textarea::-webkit-scrollbar-thumb:hover {
   background: #5f6980;
 }
 
 /* =====================================================
-   通用 thin scrollbar
+   通用 thin scrollbar（例如 sidebar 對話紀錄列表）
    ===================================================== */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d6de transparent;
+}
+
+.dark .scrollbar-thin {
+  scrollbar-color: #4c5466 transparent;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
+  transition: width 0.2s;
+}
+
+.scrollbar-thin::-webkit-scrollbar:hover {
+  width: 8px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
@@ -105,8 +149,44 @@ body::-webkit-scrollbar-thumb:hover {
   background: #8994a5;
 }
 
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #4c5466;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #5f6980;
+}
+
 /* =====================================================
-   Dialog box shadow（參考 ）
+   頂部遮罩層 — 對話內容捲動時漸層淡出，避免與標題列重疊
+   ===================================================== */
+.header-fade-mask {
+  background-image: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 85%, transparent) 40%,
+    color-mix(in srgb, var(--background) 55%, transparent) 65%,
+    color-mix(in srgb, var(--background) 20%, transparent) 85%,
+    transparent 100%
+  );
+}
+
+/* =====================================================
+   底部遮罩層 — 對話內容捲動時漸層淡出，避免與輸入框重疊
+   ===================================================== */
+.footer-fade-mask {
+  background-image: linear-gradient(
+    to top,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 85%, transparent) 40%,
+    color-mix(in srgb, var(--background) 55%, transparent) 65%,
+    color-mix(in srgb, var(--background) 20%, transparent) 85%,
+    transparent 100%
+  );
+}
+
+/* =====================================================
+   Dialog box shadow
    ===================================================== */
 .dialog-shadow {
   box-shadow: 0px 4px 16px rgba(0, 68, 173, 0.08);
