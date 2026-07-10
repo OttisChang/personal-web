@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -194,7 +194,9 @@ async def list_sessions(user_email: str):
 
 
 @router.get("/api/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str, response: Response):
+    # 對話內容會頻繁更新（例如剛中斷的回答），避免中間任何 CDN/瀏覽器快取回傳舊版本
+    response.headers["Cache-Control"] = "no-store"
     db = get_db()
     session = await db.chat_sessions.find_one({"_id": session_id})
     if not session:

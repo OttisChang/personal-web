@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import Callable, List, Optional
 
 from duckduckgo_search import DDGS
 from fastapi import APIRouter, HTTPException
@@ -9,6 +10,8 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
+from agents import AGENTS_BY_NAME, Agent, SUB_AGENT_NAMES, build_routing_system, root_agent
+from database import get_db
 from mcp_tools.weather import get_weather, get_weather_forecast
 
 router = APIRouter()
@@ -46,6 +49,7 @@ class HistoryTurn(BaseModel):
 class WebSearchRequest(BaseModel):
     query: str
     history: List[HistoryTurn] = []
+    session_id: Optional[str] = None
 
 class SearchSource(BaseModel):
     title: str
@@ -57,40 +61,132 @@ class WebSearchResponse(BaseModel):
     sources: List[SearchSource]
     search_query: Optional[str] = None
     tool_used: Optional[str] = None
+    current_agent: Optional[str] = None
 
 
-_ROUTING_SYSTEM = """你是一個智慧助手的工具路由器。根據使用者的問題，決定應該使用哪個工具來回答，並以 JSON 格式回覆。
-
-可用工具：
-- get_weather：查詢任何城市的「即時」天氣（現在的溫度、濕度、風速、是否下雨）
-- get_weather_forecast：查詢台灣縣市「未來」天氣預報（明天、後天、週末、未來幾天的降雨機率、溫度區間）
-- esun_exchange_rate：查詢玉山銀行即時外幣牌告匯率（美金、日圓、歐元、港幣、人民幣等）
-- web_search：網路搜尋，適用於其他一般問題
-
-判斷原則：
-- 問「現在/目前/今天即時」天氣 → get_weather
-- 問「明天/後天/週末/未來」天氣或「會不會下雨（非即時）」 → get_weather_forecast
-- 問匯率/外幣 → esun_exchange_rate
-- 其他 → web_search
-
-回覆格式（只回覆 JSON，不要加任何說明或 markdown）：
-{"tool": "get_weather", "city": "城市名稱", "country": "國家（可選，非台灣才填）"}
-{"tool": "get_weather_forecast", "city": "台灣縣市名稱"}
-{"tool": "esun_exchange_rate"}
-{"tool": "web_search", "search_query": "最佳搜尋關鍵字"}"""
-
-_ZH_TW = "請務必使用繁體中文（Traditional Chinese）回答，不要使用簡體中文或英文。"
-
-_TOOL_LABELS: dict[str, str] = {
-    "get_weather": "即時天氣MCP",
-    "get_weather_forecast": "天氣預報MCP",
-    "esun_exchange_rate": "匯率MCP工具",
-    "web_search": "網路搜尋",
-}
+_ROUTING_SYSTEM = build_routing_system()
+_TOOL_LABELS: dict[str, str] = {a.name: a.label for a in root_agent.sub_agents}
 
 
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+
+# -- 既有 4 個工具，統一回傳 (tool_result, sources_data, search_label) --
+
+async def _handle_get_weather(routing: dict, query: str) -> tuple[str, list[dict], str]:
+    city = routing.get("city", "")
+    country = routing.get("country", "")
+    logger.info(f"🌤️ get_weather(city={city}, country={country})")
+    tool_result = await get_weather(city=city, country=country)
+    return tool_result, [], city
+
+
+async def _handle_get_weather_forecast(routing: dict, query: str) -> tuple[str, list[dict], str]:
+    city = routing.get("city", "")
+    logger.info(f"📅 get_weather_forecast(city={city})")
+    tool_result = await get_weather_forecast(city=city)
+    return tool_result, [], city
+
+
+async def _handle_esun_exchange_rate(routing: dict, query: str) -> tuple[str, list[dict], str]:
+    from mcp_tools.exchange_rate import esun_exchange_rate as _esun_fn
+    logger.info("💱 esun_exchange_rate()")
+    raw = await _esun_fn()
+    return json.dumps(raw, ensure_ascii=False), [], "玉山銀行匯率"
+
+
+async def _handle_web_search(routing: dict, query: str) -> tuple[str, list[dict], str]:
+    search_query = routing.get("search_query", query).strip().strip('"')
+    results = _execute_web_search(search_query)
+    sources_data = [{"title": r["title"], "url": r["url"], "snippet": r["snippet"]} for r in results]
+    context = "\n\n".join(
+        f"[{i+1}] {r['title']}\n{r['snippet']}\n來源: {r['url']}"
+        for i, r in enumerate(results)
+    ) if results else "（無搜尋結果）"
+    return context, sources_data, search_query
+
+
+_TOOL_HANDLERS: dict[str, Callable] = {
+    "get_weather": _handle_get_weather,
+    "get_weather_forecast": _handle_get_weather_forecast,
+    "esun_exchange_rate": _handle_esun_exchange_rate,
+    "web_search": _handle_web_search,
+}
+
+
+async def _run_sub_agent(agent: Agent, query: str, history_messages: list[dict], attractions: list[str]) -> dict:
+    """單次 JSON-mode Groq 呼叫，用 sub-agent 自己的 persona。
+    回傳 {"reply": str, "stay": bool, "attractions_add": list[str]}。
+    絕不 raise——解析失敗時預設 stay=True，避免因模型格式偶發錯誤就把使用者踢出目前的 sub-agent。"""
+    user_content = query
+    if agent.name == "attractions_planner" and attractions:
+        user_content = f"{query}\n\n目前已收藏的景點清單：{json.dumps(attractions, ensure_ascii=False)}"
+
+    resp = _groq.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": agent.instruction},
+            *history_messages,
+            {"role": "user", "content": user_content},
+        ],
+        response_format={"type": "json_object"},
+    )
+    try:
+        data = json.loads(resp.choices[0].message.content or "{}")
+    except Exception:
+        data = {}
+
+    attractions_add = []
+    if agent.name == "attractions_planner":
+        attractions_add = [s for s in data.get("attractions_add", []) if isinstance(s, str) and s.strip()]
+
+    return {
+        "reply": (data.get("reply") or "").strip() or "不好意思，我這輪沒有理解清楚，可以再說一次嗎？",
+        "stay": bool(data.get("stay", True)),
+        "attractions_add": attractions_add,
+    }
+
+
+async def _load_session_state(session_id: Optional[str]) -> tuple[Optional[str], list[str]]:
+    """回傳 (current_agent, attractions)。session_id 不存在、Mongo 文件不存在、或任何
+    Mongo 例外，都退化成 (None, [])，只記 warning，不 raise——保留無 Mongo 也能跑的能力。"""
+    if not session_id:
+        return None, []
+    try:
+        db = get_db()
+        doc = await db.chat_sessions.find_one(
+            {"_id": session_id}, {"current_agent": 1, "attractions": 1}
+        )
+    except Exception as e:
+        logger.warning(f"Mongo session state read failed, degrading to stateless: {e}")
+        return None, []
+
+    if not doc:
+        return None, []
+
+    current_agent = doc.get("current_agent")
+    if current_agent not in SUB_AGENT_NAMES:
+        current_agent = None
+    attractions = [a for a in (doc.get("attractions") or []) if isinstance(a, str)]
+    return current_agent, attractions
+
+
+async def _save_session_state(session_id: Optional[str], current_agent: Optional[str], attractions: list[str]) -> None:
+    if not session_id:
+        return
+    try:
+        db = get_db()
+        await db.chat_sessions.update_one(
+            {"_id": session_id},
+            {"$set": {
+                "current_agent": current_agent,
+                "attractions": attractions,
+                "updated_at": datetime.now(timezone.utc),
+            }},
+        )
+    except Exception as e:
+        logger.warning(f"Mongo session state write failed (non-fatal): {e}")
 
 
 @router.post("/api/web-search")
@@ -105,94 +201,94 @@ async def web_search_endpoint(body: WebSearchRequest):
         import asyncio
         model = "llama-3.3-70b-versatile"
         try:
-            yield _sse({"type": "routing"})
+            current_agent, attractions = await _load_session_state(body.session_id)
+
+            # 是否延續上一輪的 sub-agent 尚未判斷完成，此時不能先亮出該 agent 的名稱
+            # （避免使用者問了不相關的問題時，畫面卻誤顯示「XX Agent（延續）」）。
+            yield _sse({"type": "routing", "tool": None, "label": None})
             await asyncio.sleep(0)
 
-            routing_resp = _groq.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": _ROUTING_SYSTEM},
-                    *history_messages,
-                    {"role": "user", "content": body.query},
-                ],
-                response_format={"type": "json_object"},
-            )
-            try:
-                routing = json.loads(routing_resp.choices[0].message.content or "{}")
-            except Exception:
-                routing = {"tool": "web_search", "search_query": body.query}
-
-            tool_name = routing.get("tool", "web_search")
-            tool_label = _TOOL_LABELS.get(tool_name, tool_name)
-            logger.info(f"🔀 AI routing: {routing}")
-
-            yield _sse({"type": "tool_selected", "tool": tool_name, "label": tool_label})
-            await asyncio.sleep(0)
-
+            answer: str = ""
             sources_data: list[dict] = []
             search_label = ""
+            new_current_agent: Optional[str] = None
+            answer_ready = False
+            used_sticky_shortcut = False
+            tool_result = ""
 
-            if tool_name == "get_weather":
-                city = routing.get("city", "")
-                country = routing.get("country", "")
-                logger.info(f"🌤️ get_weather(city={city}, country={country})")
-                tool_result = await get_weather(city=city, country=country)
-                search_label = city
-                answer_messages = [
-                    {"role": "system", "content": f"你是天氣助手，請根據以下即時天氣資料友善地回答使用者。{_ZH_TW}"},
-                    *history_messages,
-                    {"role": "user", "content": f"問題：{body.query}\n\n天氣資料：\n{tool_result}"},
-                ]
+            # -- 黏著延續：只打 1 次 LLM，完全跳過 routing 分類呼叫 --
+            if current_agent in SUB_AGENT_NAMES:
+                agent = AGENTS_BY_NAME[current_agent]
+                result = await _run_sub_agent(agent, body.query, history_messages, attractions)
+                if result["stay"]:
+                    used_sticky_shortcut = True
+                    answer_ready = True
+                    answer = result["reply"]
+                    if result["attractions_add"]:
+                        attractions = attractions + [a for a in result["attractions_add"] if a not in attractions]
+                    new_current_agent = agent.name
 
-            elif tool_name == "get_weather_forecast":
-                city = routing.get("city", "")
-                logger.info(f"📅 get_weather_forecast(city={city})")
-                tool_result = await get_weather_forecast(city=city)
-                search_label = city
-                answer_messages = [
-                    {"role": "system", "content": f"你是天氣預報助手，請根據以下中央氣象署預報資料友善地回答使用者的問題。{_ZH_TW}"},
-                    *history_messages,
-                    {"role": "user", "content": f"問題：{body.query}\n\n預報資料：\n{tool_result}"},
-                ]
+            if not used_sticky_shortcut:
+                # -- 全新路由分類（首輪，或黏著在這輪被打斷）--
+                routing_resp = _groq.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": _ROUTING_SYSTEM},
+                        *history_messages,
+                        {"role": "user", "content": body.query},
+                    ],
+                    response_format={"type": "json_object"},
+                )
+                try:
+                    routing = json.loads(routing_resp.choices[0].message.content or "{}")
+                except Exception:
+                    routing = {"agent": "web_search", "search_query": body.query}
 
-            elif tool_name == "esun_exchange_rate":
-                from mcp_tools.exchange_rate import esun_exchange_rate as _esun_fn
-                logger.info("💱 esun_exchange_rate()")
-                raw = await _esun_fn()
-                tool_result = json.dumps(raw, ensure_ascii=False)
-                search_label = "玉山銀行匯率"
-                answer_messages = [
-                    {"role": "system", "content": f"你是匯率助手，請根據以下玉山銀行牌告匯率資料回答使用者的問題，只需回答與問題相關的幣別即可。{_ZH_TW}"},
-                    *history_messages,
-                    {"role": "user", "content": f"問題：{body.query}\n\n匯率資料：{tool_result}"},
-                ]
+                agent_name = routing.get("agent", "web_search")
+                agent = AGENTS_BY_NAME.get(agent_name) or AGENTS_BY_NAME["web_search"]
+                logger.info(f"🔀 AI routing: {routing}")
 
-            else:  # web_search
-                search_query = routing.get("search_query", body.query).strip().strip('"')
-                results = _execute_web_search(search_query)
-                sources_data = [{"title": r["title"], "url": r["url"], "snippet": r["snippet"]} for r in results]
-                context = "\n\n".join(
-                    f"[{i+1}] {r['title']}\n{r['snippet']}\n來源: {r['url']}"
-                    for i, r in enumerate(results)
-                ) if results else "（無搜尋結果）"
-                search_label = search_query
-                answer_messages = [
-                    {"role": "system", "content": f"你是一個 AI 助手，請根據以下搜尋結果詳細回答使用者的問題。{_ZH_TW}"},
-                    *history_messages,
-                    {"role": "user", "content": f"問題：{body.query}\n\n搜尋結果：\n{context}"},
-                ]
+                if agent.kind == "sub_agent":
+                    result = await _run_sub_agent(agent, body.query, history_messages, attractions)
+                    answer_ready = True
+                    answer = result["reply"]
+                    if agent.name == "attractions_planner" and result["attractions_add"]:
+                        attractions = attractions + [a for a in result["attractions_add"] if a not in attractions]
+                    new_current_agent = agent.name if result["stay"] else None
+                else:
+                    leaf_tool = routing.get("tool") if len(agent.tools) > 1 else agent.tools[0]
+                    if leaf_tool not in agent.tools:
+                        leaf_tool = agent.tools[0]
+                    handler = _TOOL_HANDLERS[leaf_tool]
+                    tool_result, sources_data, search_label = await handler(routing, body.query)
+                    new_current_agent = None  # tool_agent 永不黏著
+
+            tool_label = _TOOL_LABELS.get(agent.name, agent.name)
+            if used_sticky_shortcut:
+                tool_label = f"{tool_label}（延續）"
+            yield _sse({"type": "tool_selected", "tool": agent.name, "label": tool_label})
+            await asyncio.sleep(0)
 
             yield _sse({"type": "executing"})
 
-            answer_resp = _groq.chat.completions.create(model=model, messages=answer_messages)
-            answer = answer_resp.choices[0].message.content or "無法取得答案，請稍後再試。"
+            if not answer_ready:
+                answer_messages = [
+                    {"role": "system", "content": agent.instruction},
+                    *history_messages,
+                    {"role": "user", "content": f"問題：{body.query}\n\n資料：\n{tool_result}"},
+                ]
+                answer_resp = _groq.chat.completions.create(model=model, messages=answer_messages)
+                answer = answer_resp.choices[0].message.content or "無法取得答案，請稍後再試。"
+
+            await _save_session_state(body.session_id, new_current_agent, attractions)
 
             yield _sse({
                 "type": "done",
                 "answer": answer,
                 "sources": sources_data,
                 "search_query": search_label,
-                "tool_used": tool_name,
+                "tool_used": agent.name,
+                "current_agent": new_current_agent,
             })
 
         except Exception as e:

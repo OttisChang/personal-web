@@ -8,7 +8,7 @@ import { useSidebar } from "../contexts/SidebarContext";
 import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BotMessageSquare, Search } from "lucide-react";
+import { BotMessageSquare, Search, Compass, MapPin, Square } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
   // 伺服器端沒有 window，DOMPurify 在 SSR 時不可用；直接回傳原文字即可，
@@ -23,17 +23,23 @@ interface SearchSource {
   snippet: string;
 }
 
+interface PlanItem {
+  sort: number;
+  plan: string;
+}
+
 interface ChatMessage {
   role: "user" | "ai" | "error";
   content: string;
   sources?: SearchSource[];
   search_query?: string;
   tool_used?: string;
+  plans?: PlanItem[];
 }
 
 const TOOL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  get_weather: {
-    label: "即時天氣 MCP",
+  weather_agent: {
+    label: "天氣 Agent",
     color: "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -41,17 +47,8 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
       </svg>
     ),
   },
-  get_weather_forecast: {
-    label: "天氣預報 MCP",
-    color: "bg-sky-50 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400",
-    icon: (
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
-      </svg>
-    ),
-  },
-  esun_exchange_rate: {
-    label: "匯率 MCP",
+  financial_agent: {
+    label: "財經 Agent",
     color: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -60,13 +57,23 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   web_search: {
-    label: "網路搜尋",
+    label: "網路搜尋 Agent",
     color: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
     ),
+  },
+  travel_brainstormer: {
+    label: "旅遊地點發想 Agent",
+    color: "bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400",
+    icon: <Compass size={10} strokeWidth={2.5} />,
+  },
+  attractions_planner: {
+    label: "景點規劃 Agent",
+    color: "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400",
+    icon: <MapPin size={10} strokeWidth={2.5} />,
   },
 };
 
@@ -162,8 +169,10 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   const toolMeta = calledTool ? TOOL_META[calledTool.tool] : null;
   const steps = [
     {
-      label: t("stepDecide"),
-      icon: (
+      label: calledTool ? `${calledTool.label} 處理中` : t("stepDecide"),
+      icon: toolMeta ? (
+        <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
+      ) : (
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
         </svg>
@@ -201,37 +210,31 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
       </div>
 
       <div className="space-y-2.5 mb-5">
-        {steps.map((s, i) => {
+        {steps.slice(0, step + 1).map((s, i) => {
           const done = i < step;
           const active = i === step;
           return (
             <div
               key={i}
-              className={`flex items-center gap-3 transition-all duration-300 ${done || active ? "opacity-100" : "opacity-25"}`}
+              className="flex items-center gap-3 transition-all duration-300 opacity-100"
             >
               <div
                 className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${
-                  done
-                    ? "bg-green-500 text-white"
-                    : active
-                    ? "bg-indigo-500 text-white"
-                    : "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                  done ? "bg-green-500 text-white" : "bg-indigo-500 text-white"
                 }`}
               >
                 {done ? (
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                ) : active ? (
+                ) : (
                   <svg className="animate-spin w-2.5 h-2.5" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                ) : (
-                  <span className="text-gray-400">{s.icon}</span>
                 )}
               </div>
-              <span className={`text-sm ${active ? "text-indigo-600 dark:text-indigo-400 font-medium" : done ? "text-gray-500 dark:text-gray-400 line-through" : "text-gray-400 dark:text-gray-600"}`}>
+              <span className={`text-sm ${active ? "text-indigo-600 dark:text-indigo-400 font-medium" : "text-gray-500 dark:text-gray-400 line-through"}`}>
                 {s.label}
               </span>
             </div>
@@ -250,8 +253,56 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
   );
 }
 
+function formatPlanStep(plan: string, t: (key: string, values?: Record<string, string>) => string): string {
+  if (plan.startsWith("routing:")) return t("stepDecide");
+  if (plan.startsWith("tool_selected:")) {
+    const toolId = plan.slice("tool_selected:".length).trim();
+    const label = TOOL_META[toolId]?.label ?? toolId;
+    return t("toolInvoked", { tool: label });
+  }
+  if (plan.startsWith("executing:")) return t("stepGenerate");
+  return plan;
+}
+
+function ThinkingProcess({ plans, t }: { plans?: PlanItem[]; t: (key: string, values?: Record<string, string>) => string }) {
+  const [open, setOpen] = useState(false);
+  if (!plans || plans.length === 0) return null;
+  const sorted = [...plans].sort((a, b) => a.sort - b.sort);
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+      >
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className={`flex-shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        <span>{t("thinkingProcess")}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3 pt-2.5 space-y-2 border-t border-[var(--border)]">
+          {sorted.map((p, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-xs text-gray-500 dark:text-gray-400">
+              <span className="w-4 h-4 rounded-full bg-green-500 text-white flex items-center justify-center flex-shrink-0">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span>{formatPlanStep(p.plan, t)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LoginGate({ onGuest }: { onGuest: () => void }) {
   const [signingIn, setSigningIn] = useState(false);
+  const t = useTranslations("webSearch");
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-4">
       <div className="w-full max-w-sm text-center space-y-6">
@@ -265,9 +316,9 @@ function LoginGate({ onGuest }: { onGuest: () => void }) {
 
         {/* Title */}
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Ottis AI 搜尋</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">{t("loginTitle")}</h1>
           <p className="text-sm text-[var(--muted)] leading-relaxed">
-            登入後即可使用 AI 網路搜尋、天氣查詢與即時匯率等功能
+            {t("loginSubtitle")}
           </p>
         </div>
 
@@ -290,13 +341,13 @@ function LoginGate({ onGuest }: { onGuest: () => void }) {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
           )}
-          <span>{signingIn ? "登入中..." : "使用 Google 登入"}</span>
+          <span>{signingIn ? t("signingIn") : t("signInGoogle")}</span>
         </button>
 
         {/* Divider */}
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-[var(--border)]" />
-          <span className="text-xs text-[var(--muted)]">或</span>
+          <span className="text-xs text-[var(--muted)]">{t("orDivider")}</span>
           <div className="flex-1 h-px bg-[var(--border)]" />
         </div>
 
@@ -306,10 +357,10 @@ function LoginGate({ onGuest }: { onGuest: () => void }) {
             onClick={onGuest}
             className="w-full px-5 py-3 rounded-xl text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent hover:border-[var(--border)] transition-colors"
           >
-            以訪客身份繼續
+            {t("continueAsGuest")}
           </button>
           <p className="text-xs text-[var(--muted)] leading-relaxed">
-            訪客模式無需登入即可使用，但對話紀錄不會被儲存
+            {t("guestNote")}
           </p>
         </div>
       </div>
@@ -334,9 +385,12 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isSubmittingRef = useRef<boolean>(false);
   const plansRef = useRef<{ sort: number; plan: string }[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     inputRef.current?.focus();
+    if (window.matchMedia("(max-width: 640px)").matches) setIsMobile(true);
   }, []);
 
   useEffect(() => {
@@ -393,6 +447,8 @@ export default function Home() {
     setLoadingStep(0);
     setCalledTool(null);
     plansRef.current = [];
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setMessages((prev) => [...prev, { role: "user", content: safeQuery }]);
     setQuery("");
 
@@ -443,11 +499,62 @@ export default function Home() {
       .filter((m) => m.role === "user" || m.role === "ai")
       .map((m) => ({ role: m.role === "ai" ? "assistant" : "user", content: m.content }));
 
+    const persistTurn = (aiMsg: ChatMessage) => {
+      if (!(session?.user?.email && sid)) return;
+      const aiPayload = {
+        role: "assistant",
+        content: aiMsg.content,
+        model_name: "llama-3.3-70b-versatile",
+        tool_used: aiMsg.tool_used ?? null,
+        search_query: aiMsg.search_query ?? null,
+        sources: aiMsg.sources ?? [],
+        plans: plansRef.current,
+      };
+
+      (async () => {
+        try {
+          // 新 session：user 訊息已在建立時存入，這裡只追加 AI 回應
+          // 既有 session：同時追加 user 與 AI
+          const messagesToSave = isNewSession
+            ? [aiPayload]
+            : [{ role: "user", content: safeQuery }, aiPayload];
+
+          await fetch(`/api/sessions/${sid}/messages`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: messagesToSave }),
+          });
+
+          window.dispatchEvent(new CustomEvent("conversation-saved"));
+
+          // 標題只在建立 session 的第一輪（含訪客登入後補存的第一輪）自動命名一次，
+          // 並帶入完整對話（含訪客期間的前幾輪），讓標題涵蓋整段脈絡而非只有最新一輪
+          if (isNewSession) {
+            const fullConversation = [
+              ...history,
+              { role: "user", content: safeQuery },
+              { role: "assistant", content: aiMsg.content },
+            ];
+            fetch(`/api/sessions/${sid}/title`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ messages: fullConversation }),
+            })
+              .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
+              .catch(() => {});
+          }
+        } catch {
+          // 儲存失敗不影響主流程
+        }
+      })();
+    };
+
     try {
       const res = await fetch("/api/web-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: safeQuery, history }),
+        body: JSON.stringify({ query: safeQuery, history, session_id: sid }),
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -479,6 +586,11 @@ export default function Home() {
 
           if (event.type === "routing") {
             plansRef.current = [{ sort: 1, plan: "routing: 分析問題決策工具" }];
+            if (event.tool) {
+              setCalledTool({ tool: event.tool as string, label: event.label as string });
+            } else {
+              setCalledTool(null);
+            }
             setLoadingStep(0);
           } else if (event.type === "tool_selected") {
             plansRef.current = [...plansRef.current, { sort: 2, plan: `tool_selected: ${event.tool}` }];
@@ -494,57 +606,10 @@ export default function Home() {
               sources: event.sources as SearchSource[],
               search_query: event.search_query as string,
               tool_used: event.tool_used as string,
+              plans: [...plansRef.current],
             };
             setMessages((prev) => [...prev, newAiMsg]);
-
-            if (session?.user?.email && sid) {
-              const aiPayload = {
-                role: "assistant",
-                content: newAiMsg.content,
-                model_name: "llama-3.3-70b-versatile",
-                tool_used: newAiMsg.tool_used ?? null,
-                search_query: newAiMsg.search_query ?? null,
-                sources: newAiMsg.sources ?? [],
-                plans: plansRef.current,
-              };
-
-              (async () => {
-                try {
-                  // 新 session：user 訊息已在建立時存入，這裡只追加 AI 回應
-                  // 既有 session：同時追加 user 與 AI
-                  const messagesToSave = isNewSession
-                    ? [aiPayload]
-                    : [{ role: "user", content: safeQuery }, aiPayload];
-
-                  await fetch(`/api/sessions/${sid}/messages`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ messages: messagesToSave }),
-                  });
-
-                  window.dispatchEvent(new CustomEvent("conversation-saved"));
-
-                  // 標題只在建立 session 的第一輪（含訪客登入後補存的第一輪）自動命名一次，
-                  // 並帶入完整對話（含訪客期間的前幾輪），讓標題涵蓋整段脈絡而非只有最新一輪
-                  if (isNewSession) {
-                    const fullConversation = [
-                      ...history,
-                      { role: "user", content: safeQuery },
-                      { role: "assistant", content: newAiMsg.content },
-                    ];
-                    fetch(`/api/sessions/${sid}/title`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ messages: fullConversation }),
-                    })
-                      .then(() => window.dispatchEvent(new CustomEvent("conversation-saved")))
-                      .catch(() => {});
-                  }
-                } catch {
-                  // 儲存失敗不影響主流程
-                }
-              })();
-            }
+            persistTurn(newAiMsg);
 
             break outer;
           } else if (event.type === "error") {
@@ -553,18 +618,29 @@ export default function Home() {
         }
       }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "error",
-          content: err instanceof Error ? err.message : t("errorGeneric"),
-        },
-      ]);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        const interruptedMsg: ChatMessage = { role: "ai", content: t("interrupted"), plans: [...plansRef.current] };
+        setMessages((prev) => [...prev, interruptedMsg]);
+        persistTurn(interruptedMsg);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "error",
+            content: err instanceof Error ? err.message : t("errorGeneric"),
+          },
+        ]);
+      }
     } finally {
       isSubmittingRef.current = false;
       setLoading(false);
       setCalledTool(null);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
   };
 
   if (status === "loading") {
@@ -666,6 +742,9 @@ export default function Home() {
                 )}
               </div>
 
+              {/* Thinking process (collapsible) */}
+              <ThinkingProcess plans={msg.plans} t={t} />
+
               {/* Answer content */}
               <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
                 <AnswerBlock text={msg.content} />
@@ -724,21 +803,19 @@ export default function Home() {
                   handleSearch();
                 }
               }}
-              placeholder={t("placeholder")}
+              placeholder={isMobile ? t("placeholderShort") : t("placeholder")}
               disabled={loading}
               className="w-full pl-6 py-3.5 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
             />
             <button
-              type="submit"
-              disabled={!query.trim() || loading}
+              type={loading ? "button" : "submit"}
+              onClick={loading ? handleStop : undefined}
+              disabled={!loading && !query.trim()}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white disabled:text-gray-400 transition-colors flex items-center justify-center"
-              aria-label={t("searchBtn")}
+              aria-label={loading ? t("stopBtn") : t("searchBtn")}
             >
               {loading ? (
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
+                <Square size={18} fill="currentColor" />
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" />

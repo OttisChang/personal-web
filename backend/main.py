@@ -1,12 +1,14 @@
 import logging
 from dotenv import load_dotenv
+
+load_dotenv()  # 必須在其他本地模組 import 之前執行，因為 api/web_search.py 等模組
+                # 會在 import 當下（模組載入時）就讀取 GROQ_API_KEY 等環境變數
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mcp_instance import mcp_server
 import mcp_tools  # noqa: F401 — registers all MCP tools on import
 from api import router
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
