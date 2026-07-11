@@ -4,8 +4,6 @@ import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { routing } from '../../i18n/routing';
-import ThemeToggle from '../components/ThemeToggle';
-import LanguageSwitcher from '../components/LanguageSwitcher';
 import LocaleHtmlUpdater from '../components/LocaleHtmlUpdater';
 import Sidebar from '../components/Sidebar';
 import MainContent from '../components/MainContent';
@@ -41,10 +39,8 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <NextIntlClientProvider messages={messages}>
       <LocaleHtmlUpdater />
-      <ThemeToggle />
-      <LanguageSwitcher />
       <SidebarProvider>
-        <div className="h-screen overflow-hidden">
+        <div className="h-dvh overflow-hidden">
           <Sidebar />
           <MainContent>{children}</MainContent>
         </div>

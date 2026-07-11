@@ -8,7 +8,7 @@ import { useSidebar } from "../../../contexts/SidebarContext";
 import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BotMessageSquare, Compass, MapPin, Square } from "lucide-react";
+import { BotMessageSquare, Compass, MapPin } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
   // 伺服器端沒有 window，DOMPurify 在 SSR 時不可用；直接回傳原文字即可，
@@ -41,9 +41,8 @@ interface DisplayMessage {
 
 // ── Tool metadata ─────────────────────────────────────────────────────────────
 
-const TOOL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+const TOOL_META: Record<string, { color: string; icon: React.ReactNode }> = {
   weather_agent: {
-    label: "天氣 Agent",
     color: "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -52,7 +51,6 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   financial_agent: {
-    label: "財經 Agent",
     color: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -61,7 +59,6 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   web_search: {
-    label: "網路搜尋 Agent",
     color: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -70,16 +67,18 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   travel_brainstormer: {
-    label: "旅遊地點發想 Agent",
     color: "bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400",
     icon: <Compass size={10} strokeWidth={2.5} />,
   },
   attractions_planner: {
-    label: "景點規劃 Agent",
     color: "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400",
     icon: <MapPin size={10} strokeWidth={2.5} />,
   },
 };
+
+function toolLabel(t: (key: string, values?: Record<string, string>) => string, toolId: string): string {
+  return TOOL_META[toolId] ? t(`tools.${toolId}`) : toolId;
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -165,19 +164,20 @@ function AnswerBlock({ text }: { text: string }) {
   );
 }
 
-type CalledTool = { tool: string; label: string };
+type CalledTool = { tool: string };
 
-function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string) => string }) {
+function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string, values?: Record<string, string>) => string }) {
   const toolMeta = calledTool ? TOOL_META[calledTool.tool] : null;
+  const toolText = calledTool ? toolLabel(t, calledTool.tool) : null;
   const steps = [
     {
-      label: calledTool ? `${calledTool.label} 處理中` : t("stepDecide"),
+      label: calledTool ? t("toolProcessing", { tool: toolText! }) : t("stepDecide"),
       icon: toolMeta
         ? <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
         : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>,
     },
     {
-      label: calledTool ? `調用 ${calledTool.label}` : t("stepSearch"),
+      label: calledTool ? t("toolInvoked", { tool: toolText! }) : t("stepSearch"),
       icon: toolMeta
         ? <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
         : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
@@ -193,10 +193,6 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
       <div className="flex items-center gap-2 mb-5">
         <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
         <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
-        <svg className="ml-auto animate-spin w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
       </div>
       <div className="space-y-2.5 mb-5">
         {steps.slice(0, step + 1).map((s, i) => {
@@ -208,10 +204,7 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
                 {done ? (
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 ) : (
-                  <svg className="animate-spin w-2.5 h-2.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                  </svg>
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 )}
               </div>
               <span className={`text-sm ${active ? "text-indigo-600 dark:text-indigo-400 font-medium" : "text-gray-500 dark:text-gray-400 line-through"}`}>
@@ -221,12 +214,12 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
           );
         })}
       </div>
-      <div className="space-y-2 animate-pulse">
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+      <div className="space-y-2">
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6 skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5 skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4 skeleton-shimmer" />
       </div>
     </div>
   );
@@ -236,7 +229,7 @@ function formatPlanStep(plan: string, t: (key: string, values?: Record<string, s
   if (plan.startsWith("routing:")) return t("stepDecide");
   if (plan.startsWith("tool_selected:")) {
     const toolId = plan.slice("tool_selected:".length).trim();
-    const label = TOOL_META[toolId]?.label ?? toolId;
+    const label = toolLabel(t, toolId);
     return t("toolInvoked", { tool: label });
   }
   if (plan.startsWith("executing:")) return t("stepGenerate");
@@ -443,14 +436,14 @@ export default function SessionPage() {
           if (event.type === "routing") {
             plansRef.current = [{ sort: 1, plan: "routing: 分析問題決策工具" }];
             if (event.tool) {
-              setCalledTool({ tool: event.tool as string, label: event.label as string });
+              setCalledTool({ tool: event.tool as string });
             } else {
               setCalledTool(null);
             }
             setLoadingStep(0);
           } else if (event.type === "tool_selected") {
             plansRef.current = [...plansRef.current, { sort: 2, plan: `tool_selected: ${event.tool}` }];
-            setCalledTool({ tool: event.tool as string, label: event.label as string });
+            setCalledTool({ tool: event.tool as string });
             setLoadingStep(1);
           } else if (event.type === "executing") {
             plansRef.current = [...plansRef.current, { sort: 3, plan: "executing: 生成答案" }];
@@ -498,18 +491,15 @@ export default function SessionPage() {
   // ── Auth / page loading
   if (status === "loading" || pageLoading) {
     return (
-      <main className="flex items-center justify-center min-h-screen bg-[var(--background)]">
-        <svg className="animate-spin w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-        </svg>
+      <main className="flex items-center justify-center min-h-dvh bg-[var(--background)]">
+        <span className="w-6 h-6 rounded-full border-[3px] border-indigo-500 dark:border-indigo-400 border-t-transparent animate-spin" />
       </main>
     );
   }
 
   if (pageError) {
     return (
-      <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] gap-4">
+      <main className="flex flex-col items-center justify-center min-h-dvh bg-[var(--background)] gap-4">
         <p className="text-sm text-[var(--muted)]">{pageError}</p>
         <button onClick={() => router.push("/")} className="text-sm text-indigo-500 hover:underline">
           返回首頁
@@ -519,7 +509,7 @@ export default function SessionPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-screen bg-[var(--background)]">
+    <main className="flex flex-col min-h-dvh bg-[var(--background)]">
       {/* 頂部遮罩層 — 避免對話內容捲動時與標題列/按鈕重疊 */}
       <div className="header-fade-mask fixed top-0 left-0 right-4 z-[5] h-24 pointer-events-none" />
 
@@ -567,7 +557,7 @@ export default function SessionPage() {
                 <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
                 {meta && (
                   <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${meta.color}`}>
-                    {meta.icon}{meta.label}
+                    {meta.icon}{toolLabel(t, msg.tool_used!)}
                   </span>
                 )}
                 {msg.tool_used === "web_search" && msg.search_query && (
@@ -630,7 +620,7 @@ export default function SessionPage() {
               aria-label={loading ? t("stopBtn") : t("searchBtn")}
             >
               {loading ? (
-                <Square size={18} fill="currentColor" />
+                <span className="block w-3.5 h-3.5 bg-white transition-none transform-gpu" />
               ) : (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/>

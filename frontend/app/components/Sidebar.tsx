@@ -4,10 +4,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { CircleChevronLeft, Clock4, Menu, Search, Trash2, UserStar } from 'lucide-react';
+import { CircleChevronLeft, Clock4, Menu, Search, Settings, Trash2, UserStar } from 'lucide-react';
 import { Link } from '../../i18n/navigation';
 import { useSidebar } from '../contexts/SidebarContext';
 import UserMenu from './UserMenu';
+import ThemeToggle from './ThemeToggle';
+import LanguageSwitcher from './LanguageSwitcher';
+import SettingsDialog from './SettingsDialog';
 
 interface ConversationItem {
   id: string;
@@ -27,6 +30,7 @@ export default function Sidebar() {
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [toast, setToast] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const strippedPathname = pathname.replace(/^\/(zh|en)/, '') || '/';
   const isWebSearch = strippedPathname === '/' || strippedPathname.startsWith('/session/');
@@ -100,20 +104,23 @@ export default function Sidebar() {
       {deleteTargetId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteTargetId(null)} />
-          <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl p-6 w-72 flex flex-col gap-4">
-            <p className="text-sm font-medium text-[var(--foreground)]">確認要刪除此對話嗎？</p>
-            <div className="flex gap-2 justify-end">
+          <div className="relative bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl w-[90vw] max-w-md overflow-hidden">
+            <div className="px-6 pt-8 pb-6 text-center">
+              <p className="text-lg font-semibold text-[var(--foreground)]">{tSidebar('deleteConfirm')}</p>
+              <p className="mt-2 text-sm text-[var(--muted)]">{tSidebar('deleteConfirmDesc')}</p>
+            </div>
+            <div className="grid grid-cols-2 border-t border-[var(--border)]">
               <button
                 onClick={() => setDeleteTargetId(null)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-[var(--border)] text-[var(--muted)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="py-3.5 text-sm font-medium text-[var(--muted)] hover:bg-gray-100 dark:hover:bg-gray-800 border-r border-[var(--border)] transition-colors"
               >
-                取消
+                {tSidebar('cancel')}
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                className="py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
               >
-                刪除
+                {tSidebar('delete')}
               </button>
             </div>
           </div>
@@ -124,7 +131,7 @@ export default function Sidebar() {
       {toast && (
         <div className="fixed inset-0 z-[101] flex items-center justify-center pointer-events-none">
           <div className="bg-[var(--foreground)] text-[var(--card)] text-sm px-5 py-2.5 rounded-lg shadow-lg">
-            已刪除對話
+            {tSidebar('deletedToast')}
           </div>
         </div>
       )}
@@ -197,7 +204,7 @@ export default function Sidebar() {
           <div className="flex-1 flex flex-col min-h-0 border-t border-[var(--border)]">
             <div className="px-4 pt-3 pb-2">
               <span className="text-xs font-semibold text-[var(--muted)] tracking-wide uppercase select-none">
-                對話紀錄
+                {tSidebar('history')}
               </span>
             </div>
             <ul className="flex-1 overflow-y-auto scrollbar-thin px-2 space-y-0.5 pb-2">
@@ -211,8 +218,8 @@ export default function Sidebar() {
                   </li>
                 ))
               ) : conversations.length === 0 ? (
-                <li className="px-3 py-2 text-xs text-[var(--muted)]">
-                  {session?.user ? '尚無對話紀錄' : '登入後儲存對話'}
+                <li className="px-3 py-2 text-xs text-[var(--muted)] whitespace-nowrap">
+                  {session?.user ? tSidebar('noHistory') : tSidebar('guestHistoryNote')}
                 </li>
               ) : (
                 conversations.map((conv) => (
@@ -238,7 +245,7 @@ export default function Sidebar() {
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setDeleteTargetId(conv.id); }}
                       className="flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 text-[var(--muted)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
-                      title="刪除"
+                      title={tSidebar('delete')}
                     >
                       <Trash2 width="16" height="16" />
                     </button>
@@ -254,14 +261,40 @@ export default function Sidebar() {
           <div className="flex-1" />
         )}
 
-        {/* User menu */}
-        {!collapsed && (
-          <div className="border-t border-[var(--border)] h-20 flex items-center px-1">
-            <UserMenu />
+        {/* Theme / language toggle (collapsed only) + user menu */}
+        <div className="flex flex-col">
+          {collapsed && (
+            <div className="flex flex-col items-center justify-center gap-1 py-2">
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </div>
+          )}
+          {!collapsed && status !== 'loading' && !session && (
+            <div className="border-t border-[var(--border)] px-3 pt-3 pb-2">
+              <span className="block text-xs font-semibold text-[var(--muted)] tracking-wide uppercase select-none mb-1.5">
+                {tSidebar('systemSettings')}
+              </span>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-gray-100 dark:hover:bg-gray-800 border border-[var(--border)] transition-colors"
+              >
+                <Settings width={14} height={14} />
+                {tSidebar('personalizeSettings')}
+              </button>
+            </div>
+          )}
+          <div
+            className={`border-t border-[var(--border)] flex items-center ${
+              collapsed ? 'justify-center py-2' : 'h-20 px-1'
+            }`}
+          >
+            <UserMenu collapsed={collapsed} onOpenSettings={() => setSettingsOpen(true)} />
           </div>
-        )}
+        </div>
 
       </aside>
+
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

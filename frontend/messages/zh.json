@@ -12,11 +12,35 @@
     "author": "Ottis Chang",
     "expand": "展開選單",
     "collapse": "收合選單",
-    "footer": "© 2026 Ottis Chang"
+    "footer": "© 2026 Ottis Chang",
+    "history": "對話紀錄",
+    "noHistory": "尚無對話紀錄",
+    "guestHistoryNote": "登入後儲存對話",
+    "deleteConfirm": "確認要刪除此對話嗎？",
+    "deleteConfirmDesc": "此操作將無法復原",
+    "cancel": "取消",
+    "delete": "刪除",
+    "deletedToast": "已刪除對話",
+    "systemSettings": "系統設定",
+    "personalizeSettings": "個人化設定"
   },
   "themeToggle": {
     "toDark": "切換為深色模式",
     "toLight": "切換為淺色模式"
+  },
+  "userMenu": {
+    "guestLogin": "訪客模式（登入以儲存對話）",
+    "personalizeSettings": "個人化設定",
+    "logout": "登出"
+  },
+  "settingsDialog": {
+    "title": "個人化設定",
+    "subtitle": "管理您的基本設定",
+    "darkMode": "深色/淺色模式",
+    "darkModeDesc": "切換介面的顯示主題",
+    "language": "語言",
+    "languageDesc": "選擇顯示語言",
+    "toggleDarkMode": "切換深色模式"
   },
   "home": {
     "experience": "工作經歷",
@@ -36,10 +60,22 @@
     "searchBtn": "搜尋",
     "stopBtn": "停止",
     "interrupted": "您已停止對話",
-    "hint": "由 llama-3.3-70b 模型回答",
     "aiAnswer": "Ottis AI",
     "sources": "參考來源",
-    "emptyState": "輸入問題，AI 將搜尋最新資訊並整合回答",
+    "greetings": [
+      "有什麼我能幫你的嗎？",
+      "今天想搜尋些什麼呢？",
+      "嗨，我是 Ottis AI，有什麼想問的？",
+      "隨時準備好為你搜尋答案",
+      "想了解什麼呢？儘管問我"
+    ],
+    "greetingsWithName": [
+      "嗨，{name}！有什麼我能幫你的嗎？",
+      "{name}，今天想搜尋些什麼呢？",
+      "嗨，{name}！我是 Ottis AI，有什麼想問的？",
+      "{name}，隨時準備好為你搜尋答案",
+      "嗨，{name}！想了解什麼呢？儘管問我"
+    ],
     "errorGeneric": "發生錯誤，請稍後再試。",
     "stepDecide": "Root Agent 判斷中...",
     "stepSearch": "工具執行中",
@@ -47,6 +83,14 @@
     "stepGenerate": "生成回答中...",
     "thinkingProcess": "思考歷程",
     "toolInvoked": "調用 {tool}",
+    "toolProcessing": "{tool} 處理中",
+    "tools": {
+      "weather_agent": "天氣 Agent",
+      "financial_agent": "財經 Agent",
+      "web_search": "網路搜尋 Agent",
+      "travel_brainstormer": "旅遊地點發想 Agent",
+      "attractions_planner": "景點規劃 Agent"
+    },
     "loginTitle": "Ottis AI 搜尋",
     "loginSubtitle": "可使用 AI 網路搜尋、天氣查詢與即時匯率等功能",
     "signInGoogle": "使用 Google 登入",

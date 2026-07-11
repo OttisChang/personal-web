@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ className = "" }: { className?: string }) {
   const [dark, setDark] = useState(false);
+  const t = useTranslations("themeToggle");
 
   useEffect(() => {
     // 讀取初始狀態（與 layout 的防閃爍腳本保持一致）
@@ -23,19 +25,16 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label={dark ? "切換為淺色模式" : "切換為深色模式"}
-      className="
-        fixed top-4 right-6 z-50
-        w-10 h-10 rounded-full
+      aria-label={dark ? t("toLight") : t("toDark")}
+      title={dark ? t("toLight") : t("toDark")}
+      className={`
+        w-8 h-8 rounded-lg flex-shrink-0
         flex items-center justify-center
-        bg-white/90 dark:bg-gray-800/90
-        border border-gray-200 dark:border-gray-700
-        shadow-md hover:shadow-lg
-        text-gray-600 dark:text-gray-300
-        hover:bg-gray-100 dark:hover:bg-gray-700
-        backdrop-blur-sm
-        transition-all duration-200
-      "
+        text-[var(--muted)] hover:text-[var(--foreground)]
+        hover:bg-[var(--accent-soft)]
+        transition-colors duration-200
+        ${className}
+      `}
     >
       {dark ? (
         /* Sun icon */

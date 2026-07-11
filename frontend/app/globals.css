@@ -31,10 +31,13 @@ html {
   scroll-behavior: smooth;
   /* 永遠預留直向捲軸空間，避免開關時左右晃動 */
   scrollbar-gutter: stable;
+  overscroll-behavior-y: none;
 }
 
 body {
   font-family: 'Noto Sans TC', sans-serif;
+  background-color: var(--background);
+  overscroll-behavior-y: none;
 }
 
 /* 色彩模式切換時套用過渡動畫 */
@@ -182,6 +185,62 @@ textarea::-webkit-scrollbar-thumb:hover {
     color-mix(in srgb, var(--background) 55%, transparent) 65%,
     color-mix(in srgb, var(--background) 20%, transparent) 85%,
     transparent 100%
+  );
+}
+
+/* =====================================================
+   Greeting 揭露動畫 — 由左至右顯示
+   ===================================================== */
+@keyframes greetingWipeIn {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.animate-greeting-wipe {
+  animation: greetingWipeIn 0.7s ease-out both;
+}
+
+/* =====================================================
+   Skeleton 載入動畫 — 光影由左至右掃過，改變透明度
+   ===================================================== */
+@keyframes skeletonShimmerLTR {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: skeletonShimmerLTR 1.6s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
   );
 }
 

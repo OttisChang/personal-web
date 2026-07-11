@@ -12,11 +12,35 @@
     "author": "Ottis Chang",
     "expand": "Expand menu",
     "collapse": "Collapse menu",
-    "footer": "© 2026 Ottis Chang"
+    "footer": "© 2026 Ottis Chang",
+    "history": "History",
+    "noHistory": "No conversations yet",
+    "guestHistoryNote": "Sign in to save conversations",
+    "deleteConfirm": "Delete this conversation?",
+    "deleteConfirmDesc": "This action cannot be undone",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deletedToast": "Conversation deleted",
+    "systemSettings": "System Settings",
+    "personalizeSettings": "Preferences"
   },
   "themeToggle": {
     "toDark": "Switch to dark mode",
     "toLight": "Switch to light mode"
+  },
+  "userMenu": {
+    "guestLogin": "Guest mode (sign in to save conversations)",
+    "personalizeSettings": "Preferences",
+    "logout": "Log out"
+  },
+  "settingsDialog": {
+    "title": "Preferences",
+    "subtitle": "Manage your basic settings",
+    "darkMode": "Dark / Light Mode",
+    "darkModeDesc": "Switch the interface theme",
+    "language": "Language",
+    "languageDesc": "Choose your display language",
+    "toggleDarkMode": "Toggle dark mode"
   },
   "home": {
     "experience": "Work Experience",
@@ -36,10 +60,22 @@
     "searchBtn": "Search",
     "stopBtn": "Stop",
     "interrupted": "Interrupted",
-    "hint": "Powered by llama-3.3-70b",
     "aiAnswer": "Ottis AI",
     "sources": "Sources",
-    "emptyState": "Ask a question and AI will search the latest information for you",
+    "greetings": [
+      "How can I help you today?",
+      "What would you like to search for?",
+      "Hi, I'm Ottis AI — ask me anything",
+      "Ready to search for your answer",
+      "What are you curious about?"
+    ],
+    "greetingsWithName": [
+      "Hi {name}, how can I help you today?",
+      "{name}, what would you like to search for?",
+      "Hi {name}, I'm Ottis AI — ask me anything",
+      "{name}, ready to search for your answer",
+      "Hi {name}, what are you curious about?"
+    ],
     "errorGeneric": "An error occurred. Please try again.",
     "stepDecide": "Root Agent deciding...",
     "stepSearch": "Running tool",
@@ -47,6 +83,14 @@
     "stepGenerate": "Generating answer...",
     "thinkingProcess": "Thinking process",
     "toolInvoked": "Called {tool}",
+    "toolProcessing": "{tool} processing",
+    "tools": {
+      "weather_agent": "Weather Agent",
+      "financial_agent": "Financial Agent",
+      "web_search": "Web Search Agent",
+      "travel_brainstormer": "Travel Brainstormer Agent",
+      "attractions_planner": "Attractions Planner Agent"
+    },
     "loginTitle": "Ottis AI Search",
     "loginSubtitle": "Use AI web search, weather lookup, live exchange rates, and more",
     "signInGoogle": "Sign in with Google",

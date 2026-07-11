@@ -7,7 +7,7 @@ export default function MainContent({ children }: { children: ReactNode }) {
   const { collapsed } = useSidebar();
   return (
     <main
-      className={`ml-16 h-screen overflow-y-auto transition-opacity duration-300 ${
+      className={`ml-16 h-dvh overflow-y-auto overscroll-y-none transition-opacity duration-300 ${
         collapsed ? 'opacity-100' : 'opacity-50 md:opacity-100'
       }`}
     >

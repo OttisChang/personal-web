@@ -5,10 +5,11 @@ import { useTranslations } from "next-intl";
 import { useSession, signIn } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
+import Greeting from "../components/Greeting";
 import DOMPurify from "dompurify";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { BotMessageSquare, Search, Compass, MapPin, Square } from "lucide-react";
+import { BotMessageSquare, Compass, MapPin } from "lucide-react";
 
 function sanitizePlainText(input: string): string {
   // 伺服器端沒有 window，DOMPurify 在 SSR 時不可用；直接回傳原文字即可，
@@ -37,9 +38,8 @@ interface ChatMessage {
   plans?: PlanItem[];
 }
 
-const TOOL_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+const TOOL_META: Record<string, { color: string; icon: React.ReactNode }> = {
   weather_agent: {
-    label: "天氣 Agent",
     color: "bg-teal-50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -48,7 +48,6 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   financial_agent: {
-    label: "財經 Agent",
     color: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -57,7 +56,6 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   web_search: {
-    label: "網路搜尋 Agent",
     color: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400",
     icon: (
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -66,16 +64,18 @@ const TOOL_META: Record<string, { label: string; color: string; icon: React.Reac
     ),
   },
   travel_brainstormer: {
-    label: "旅遊地點發想 Agent",
     color: "bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400",
     icon: <Compass size={10} strokeWidth={2.5} />,
   },
   attractions_planner: {
-    label: "景點規劃 Agent",
     color: "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400",
     icon: <MapPin size={10} strokeWidth={2.5} />,
   },
 };
+
+function toolLabel(t: (key: string, values?: Record<string, string>) => string, toolId: string): string {
+  return TOOL_META[toolId] ? t(`tools.${toolId}`) : toolId;
+}
 
 function SourceCard({ source, index }: { source: SearchSource; index: number }) {
   const domain = (() => {
@@ -187,13 +187,14 @@ function AnswerBlock({ text }: { text: string }) {
 
 const GUEST_TURN_LIMIT = 3;
 
-type CalledTool = { tool: string; label: string };
+type CalledTool = { tool: string };
 
-function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string) => string }) {
+function LoadingCard({ step, calledTool, t }: { step: number; calledTool: CalledTool | null; t: (key: string, values?: Record<string, string>) => string }) {
   const toolMeta = calledTool ? TOOL_META[calledTool.tool] : null;
+  const toolText = calledTool ? toolLabel(t, calledTool.tool) : null;
   const steps = [
     {
-      label: calledTool ? `${calledTool.label} 處理中` : t("stepDecide"),
+      label: calledTool ? t("toolProcessing", { tool: toolText! }) : t("stepDecide"),
       icon: toolMeta ? (
         <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
       ) : (
@@ -203,7 +204,7 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
       ),
     },
     {
-      label: calledTool ? `調用 ${calledTool.label}` : t("stepSearch"),
+      label: calledTool ? t("toolInvoked", { tool: toolText! }) : t("stepSearch"),
       icon: toolMeta ? (
         <span className="w-3 h-3 flex items-center justify-center">{toolMeta.icon}</span>
       ) : (
@@ -227,10 +228,6 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
       <div className="flex items-center gap-2 mb-5">
         <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
         <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
-        <svg className="ml-auto animate-spin w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
       </div>
 
       <div className="space-y-2.5 mb-5">
@@ -252,10 +249,7 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : (
-                  <svg className="animate-spin w-2.5 h-2.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 )}
               </div>
               <span className={`text-sm ${active ? "text-indigo-600 dark:text-indigo-400 font-medium" : "text-gray-500 dark:text-gray-400 line-through"}`}>
@@ -266,12 +260,12 @@ function LoadingCard({ step, calledTool, t }: { step: number; calledTool: Called
         })}
       </div>
 
-      <div className="space-y-2 animate-pulse">
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full" />
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4" />
+      <div className="space-y-2">
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-5/6 skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-4/5 skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-full skeleton-shimmer" />
+        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded w-3/4 skeleton-shimmer" />
       </div>
     </div>
   );
@@ -281,7 +275,7 @@ function formatPlanStep(plan: string, t: (key: string, values?: Record<string, s
   if (plan.startsWith("routing:")) return t("stepDecide");
   if (plan.startsWith("tool_selected:")) {
     const toolId = plan.slice("tool_selected:".length).trim();
-    const label = TOOL_META[toolId]?.label ?? toolId;
+    const label = toolLabel(t, toolId);
     return t("toolInvoked", { tool: label });
   }
   if (plan.startsWith("executing:")) return t("stepGenerate");
@@ -328,7 +322,7 @@ function LoginGate({ onGuest }: { onGuest: () => void }) {
   const [signingIn, setSigningIn] = useState(false);
   const t = useTranslations("webSearch");
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-4">
+    <main className="flex flex-col items-center justify-center min-h-dvh bg-[var(--background)] px-4">
       <div className="w-full max-w-sm text-center space-y-6">
         {/* Icon */}
         <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
@@ -353,10 +347,7 @@ function LoginGate({ onGuest }: { onGuest: () => void }) {
           className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium text-[var(--foreground)] transition-colors shadow-sm disabled:opacity-60"
         >
           {signingIn ? (
-            <svg className="animate-spin w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
+            <span className="w-4 h-4 rounded-full border-2 border-indigo-500 dark:border-indigo-400 border-t-transparent animate-spin flex-shrink-0" />
           ) : (
             <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -461,6 +452,8 @@ export default function Home() {
 
   const guestQuestionCount = messages.filter((m) => m.role === "user").length;
   const guestLimitReached = guestMode && guestQuestionCount >= GUEST_TURN_LIMIT;
+  // 訪客達到上限後，等第三次提問的 AI 回答顯示完畢才出現登入提示，避免蓋掉還在生成中的回答
+  const showGuestLimitBanner = guestLimitReached && !loading;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -619,14 +612,14 @@ export default function Home() {
           if (event.type === "routing") {
             plansRef.current = [{ sort: 1, plan: "routing: 分析問題決策工具" }];
             if (event.tool) {
-              setCalledTool({ tool: event.tool as string, label: event.label as string });
+              setCalledTool({ tool: event.tool as string });
             } else {
               setCalledTool(null);
             }
             setLoadingStep(0);
           } else if (event.type === "tool_selected") {
             plansRef.current = [...plansRef.current, { sort: 2, plan: `tool_selected: ${event.tool}` }];
-            setCalledTool({ tool: event.tool as string, label: event.label as string });
+            setCalledTool({ tool: event.tool as string });
             setLoadingStep(1);
           } else if (event.type === "executing") {
             plansRef.current = [...plansRef.current, { sort: 3, plan: "executing: 生成答案" }];
@@ -677,11 +670,8 @@ export default function Home() {
 
   if (status === "loading") {
     return (
-      <main className="flex items-center justify-center min-h-screen bg-[var(--background)]">
-        <svg className="animate-spin w-6 h-6 text-indigo-400" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
+      <main className="flex items-center justify-center min-h-dvh bg-[var(--background)]">
+        <span className="w-6 h-6 rounded-full border-[3px] border-indigo-500 dark:border-indigo-400 border-t-transparent animate-spin" />
       </main>
     );
   }
@@ -693,8 +683,61 @@ export default function Home() {
   const hasMessages = messages.length > 0;
   const px = collapsed ? "px-6" : "px-4 sm:px-6";
 
+  const guestLimitBanner = (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-center sm:text-left">
+      <p className="text-sm text-[var(--muted)]">訪客模式已達 {GUEST_TURN_LIMIT} 輪對話上限，請登入以繼續</p>
+      <button
+        onClick={handleGuestSignIn}
+        className="flex-shrink-0 w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
+      >
+        使用 Google 登入
+      </button>
+    </div>
+  );
+
+  // centered：首頁置中版型，輸入框加高、變窄；docked：對話中固定貼底的原始樣式
+  const renderInputForm = (centered: boolean) => (
+    <form onSubmit={handleSearch} className="relative">
+      <textarea
+        ref={inputRef}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSearch();
+          }
+        }}
+        placeholder={isMobile ? t("placeholderShort") : t("placeholder")}
+        disabled={loading}
+        rows={1}
+        className={`w-full pl-6 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm resize-none overflow-y-auto max-h-[200px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60 ${
+          centered ? "pt-4 pb-4 min-h-20" : "py-3.5"
+        }`}
+      />
+      <button
+        type={loading ? "button" : "submit"}
+        onClick={loading ? handleStop : undefined}
+        disabled={!loading && !query.trim()}
+        className={`absolute right-4 w-9 h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white disabled:text-gray-400 transition-colors flex items-center justify-center ${
+          centered ? "top-4" : "bottom-3"
+        }`}
+        aria-label={loading ? t("stopBtn") : t("searchBtn")}
+      >
+        {loading ? (
+          <span className="block w-3.5 h-3.5 bg-white transition-none transform-gpu" />
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        )}
+      </button>
+    </form>
+  );
+
   return (
-    <main className="flex flex-col min-h-screen bg-[var(--background)]">
+    <main className="flex flex-col min-h-dvh bg-[var(--background)]">
       {/* 頂部遮罩層 — 避免對話內容捲動時與標題列/按鈕重疊 */}
       <div className="header-fade-mask fixed top-0 left-0 right-4 z-[5] h-24 pointer-events-none" />
 
@@ -715,153 +758,110 @@ export default function Home() {
         </h1>
       </div>
 
-      {/* Messages area */}
-      <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-64 space-y-6 ${px}`}>
-        {/* Empty state */}
-        {!hasMessages && !loading && (
-          <div className="flex flex-col items-center justify-center py-24 text-[var(--muted)]">
-            <Search className="w-12 h-12 mb-4 opacity-30" />
-            <p className="text-sm">{t("emptyState")}</p>
-            <p className="text-xs mt-1 opacity-60">{t("hint")}</p>
-          </div>
-        )}
-
-        {/* Chat messages */}
-        {messages.map((msg, idx) => {
-          if (msg.role === "user") {
-            return (
-              <div key={idx} className="flex justify-end">
-                <div
-                  className="max-w-[80%] px-5 py-3 rounded-2xl text-sm leading-relaxed break-words select-text"
-                  style={{
-                    backgroundColor: "rgb(99 102 241 / 0.12)",
-                    color: "inherit",
-                    borderRadius: "16px 16px 16px 16px",
-                  }}
-                >
-                  <span className="text-gray-800 dark:text-gray-100">{msg.content}</span>
-                </div>
-              </div>
-            );
-          }
-
-          if (msg.role === "error") {
-            return (
-              <div key={idx} className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-sm text-red-600 dark:text-red-400">
-                {msg.content}
-              </div>
-            );
-          }
-
-          // AI message
-          return (
-            <div key={idx} className="space-y-4">
-              {/* AI header */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
-                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
-
-                {/* Tool used badge */}
-                {msg.tool_used && TOOL_META[msg.tool_used] && (
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${TOOL_META[msg.tool_used].color}`}>
-                    {TOOL_META[msg.tool_used].icon}
-                    {TOOL_META[msg.tool_used].label}
-                  </span>
-                )}
-
-                {/* Search query badge (web_search only) */}
-                {msg.tool_used === "web_search" && msg.search_query && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                    {msg.search_query}
-                  </span>
-                )}
-              </div>
-
-              {/* Thinking process (collapsible) */}
-              <ThinkingProcess plans={msg.plans} t={t} />
-
-              {/* Answer content */}
-              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
-                <AnswerBlock text={msg.content} />
-              </div>
-
-              {/* Sources */}
-              {msg.sources && msg.sources.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-                    </svg>
-                    {t("sources")}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {msg.sources.map((s, i) => (
-                      <SourceCard key={i} source={s} index={i} />
-                    ))}
+      {!hasMessages && !loading ? (
+        /* Empty state — greeting 置中，輸入框緊接在下方 */
+        <div className={`flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full pt-14 ${px}`}>
+          <Greeting />
+          <div className="w-full max-w-md">{guestLimitReached ? guestLimitBanner : renderInputForm(true)}</div>
+        </div>
+      ) : (
+        <>
+        {/* Messages area */}
+        <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-64 space-y-6 ${px}`}>
+          {/* Chat messages */}
+          {messages.map((msg, idx) => {
+            if (msg.role === "user") {
+              return (
+                <div key={idx} className="flex justify-end">
+                  <div
+                    className="max-w-[80%] px-5 py-3 rounded-2xl text-sm leading-relaxed break-words select-text"
+                    style={{
+                      backgroundColor: "rgb(99 102 241 / 0.12)",
+                      color: "inherit",
+                      borderRadius: "16px 16px 16px 16px",
+                    }}
+                  >
+                    <span className="text-gray-800 dark:text-gray-100">{msg.content}</span>
                   </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            }
 
-        {/* Loading state inline in chat */}
-        {loading && <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />}
+            if (msg.role === "error") {
+              return (
+                <div key={idx} className="p-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 text-sm text-red-600 dark:text-red-400">
+                  {msg.content}
+                </div>
+              );
+            }
 
-        <div ref={messagesEndRef} />
-      </div>
+            // AI message
+            return (
+              <div key={idx} className="space-y-4">
+                {/* AI header */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
 
-      {/* Fixed bottom input bar */}
-      <div className="fixed bottom-0 left-16 right-0 footer-fade-mask pt-8 pb-4">
-        <div className={`max-w-2xl mx-auto pl-[2px] pr-4 sm:pr-6`}>
-          {guestLimitReached ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-center sm:text-left">
-              <p className="text-sm text-[var(--muted)]">訪客模式已達 {GUEST_TURN_LIMIT} 輪對話上限，請登入以繼續</p>
-              <button
-                onClick={handleGuestSignIn}
-                className="flex-shrink-0 w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
-              >
-                使用 Google 登入
-              </button>
-            </div>
-          ) : (
-          <form onSubmit={handleSearch} className="relative">
-            <textarea
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-              placeholder={isMobile ? t("placeholderShort") : t("placeholder")}
-              disabled={loading}
-              rows={1}
-              className="w-full pl-6 py-3.5 pr-14 rounded-2xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-sm shadow-sm resize-none overflow-y-auto max-h-[200px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 transition-all duration-200 disabled:opacity-60"
-            />
-            <button
-              type={loading ? "button" : "submit"}
-              onClick={loading ? handleStop : undefined}
-              disabled={!loading && !query.trim()}
-              className="absolute right-4 bottom-3 w-9 h-9 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-200 dark:disabled:bg-gray-800 text-white disabled:text-gray-400 transition-colors flex items-center justify-center"
-              aria-label={loading ? t("stopBtn") : t("searchBtn")}
-            >
-              {loading ? (
-                <Square size={18} fill="currentColor" />
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                  <polyline points="12 5 19 12 12 19" />
-                </svg>
-              )}
-            </button>
-          </form>
-          )}
+                  {/* Tool used badge */}
+                  {msg.tool_used && TOOL_META[msg.tool_used] && (
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${TOOL_META[msg.tool_used].color}`}>
+                      {TOOL_META[msg.tool_used].icon}
+                      {toolLabel(t, msg.tool_used)}
+                    </span>
+                  )}
+
+                  {/* Search query badge (web_search only) */}
+                  {msg.tool_used === "web_search" && msg.search_query && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                      {msg.search_query}
+                    </span>
+                  )}
+                </div>
+
+                {/* Thinking process (collapsible) */}
+                <ThinkingProcess plans={msg.plans} t={t} />
+
+                {/* Answer content */}
+                <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
+                  <AnswerBlock text={msg.content} />
+                </div>
+
+                {/* Sources */}
+                {msg.sources && msg.sources.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                      </svg>
+                      {t("sources")}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {msg.sources.map((s, i) => (
+                        <SourceCard key={i} source={s} index={i} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Loading state inline in chat */}
+          {loading && <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />}
+
+          <div ref={messagesEndRef} />
         </div>
-      </div>
+
+        {/* Fixed bottom input bar */}
+        <div className="fixed bottom-0 left-16 right-0 footer-fade-mask pt-8 pb-4">
+          <div className={`max-w-2xl mx-auto pl-[2px] pr-4 sm:pr-6`}>
+            {showGuestLimitBanner ? guestLimitBanner : renderInputForm(false)}
+          </div>
+        </div>
+        </>
+      )}
     </main>
   );
 }
