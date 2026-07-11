@@ -450,6 +450,21 @@ export default function Home() {
     }
   }, [status, guestMode]);
 
+  // Sidebar 的「New Conversation」點擊時會廣播這個事件；若目前就停留在首頁（網址被手動改成
+  // /session/xxx，Next.js 路由其實沒變），Link 本身不會觸發任何導覽，改由這裡手動清空狀態並還原網址
+  useEffect(() => {
+    const handler = () => {
+      abortControllerRef.current?.abort();
+      setMessages([]);
+      setCurrentSessionId(null);
+      setQuery("");
+      plansRef.current = [];
+      window.history.pushState({}, "", `/${locale}`);
+    };
+    window.addEventListener("new-conversation", handler);
+    return () => window.removeEventListener("new-conversation", handler);
+  }, [locale]);
+
   const guestQuestionCount = messages.filter((m) => m.role === "user").length;
   const guestLimitReached = guestMode && guestQuestionCount >= GUEST_TURN_LIMIT;
   // 訪客達到上限後，等第三次提問的 AI 回答顯示完畢才出現登入提示，避免蓋掉還在生成中的回答

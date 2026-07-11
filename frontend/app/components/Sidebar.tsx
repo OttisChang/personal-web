@@ -184,6 +184,11 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 title={collapsed ? item.label : undefined}
+                onClick={() => {
+                  // 首頁提問後網址會被手動改成 /session/xxx（沒有真的觸發 Next.js 路由導覽），
+                  // 若目前仍停留在同一個路由，Link 點擊不會有任何動作，所以額外廣播事件讓首頁自行清空狀態
+                  if (item.href === '/') window.dispatchEvent(new CustomEvent('new-conversation'));
+                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-[var(--accent-soft)] text-[var(--accent)]'

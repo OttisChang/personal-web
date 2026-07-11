@@ -1,14 +1,30 @@
+import re
 from dataclasses import dataclass
 from typing import Literal
 
 AgentKind = Literal["tool_agent", "sub_agent"]
+
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
+_THINK_OPEN_RE = re.compile(r"<think>", re.IGNORECASE)
+
+
+def strip_thinking(text: str) -> str:
+    """移除思考型模型（如 Qwen3）輸出中的 <think>...</think> 推理區塊，只留下正式回答。
+    若因 max_tokens 提前截斷導致 <think> 沒有對應的結尾標籤，視為推理尚未結束、正式回答
+    還沒生成，直接捨棄 <think> 之後的內容（通常需要搭配拉高 max_tokens 才會避免發生）。"""
+    text = _THINK_BLOCK_RE.sub("", text or "")
+    text = _THINK_OPEN_RE.split(text, maxsplit=1)[0]
+    return text.strip()
 
 _ZH_TW = (
     "【最優先語言規則，務必嚴格遵守】請判斷使用者這則提問使用的語言："
     "若使用者以英文提問，請全程使用英文回答，即使參考資料是中文也一樣；"
     "其餘情況請務必使用繁體中文（Traditional Chinese）回答，不要使用簡體中文。"
 )
-_TABLE_HINT = "若使用者的問題提到「比較」或要求「表格」，請改用 Markdown 表格呈現回答內容。"
+_TABLE_HINT = (
+    "若使用者的問題提到「比較」、要求「表格」，或請你規劃「幾天」的行程／安排每日行程，"
+    "請改用 Markdown 表格呈現回答內容（例如以「天數」「景點/行程」「備註」等欄位整理）。"
+)
 
 
 @dataclass(frozen=True)
@@ -78,8 +94,11 @@ TRAVEL_BRAINSTORMER_INSTRUCTION = f"""{_ZH_TW}（此規則適用於 reply 欄位
 - 除上述情況外，只要對話仍圍繞在「還沒決定要去哪裡玩」，請將 stay 設為 true，持續以本角色回覆。
 - {_TABLE_HINT}（表格內容寫在 reply 欄位的文字裡）。
 
-請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
-{{"reply": "你給使用者的完整回覆文字", "stay": true 或 false}}"""
+請務必只回覆 JSON，不要加任何說明或 markdown。請先判斷「使用者最新一句話」使用的語言，填入 lang
+欄位，再用該語言撰寫 reply（若使用者用英文提問，lang 為 "en" 且 reply 全程用英文；其餘情況 lang
+為 "zh-TW" 且 reply 全程用繁體中文，不可使用簡體中文），reply 內的語言必須與 lang 完全一致，
+格式為：
+{{"lang": "en 或 zh-TW", "reply": "你給使用者的完整回覆文字（語言需與 lang 完全一致）", "stay": true 或 false}}"""
 
 ATTRACTIONS_PLANNER_INSTRUCTION = f"""{_ZH_TW}（此規則適用於 reply 欄位的文字內容）
 
@@ -100,8 +119,11 @@ ATTRACTIONS_PLANNER_INSTRUCTION = f"""{_ZH_TW}（此規則適用於 reply 欄位
   持續以本角色回覆。
 - {_TABLE_HINT}（表格內容寫在 reply 欄位的文字裡）。
 
-請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
-{{"reply": "你給使用者的完整回覆文字", "stay": true 或 false, "attractions_add": ["景點名稱1", "景點名稱2"]}}"""
+請務必只回覆 JSON，不要加任何說明或 markdown。請先判斷「使用者最新一句話」使用的語言，填入 lang
+欄位，再用該語言撰寫 reply（若使用者用英文提問，lang 為 "en" 且 reply 全程用英文；其餘情況 lang
+為 "zh-TW" 且 reply 全程用繁體中文，不可使用簡體中文），reply 內的語言必須與 lang 完全一致，
+格式為：
+{{"lang": "en 或 zh-TW", "reply": "你給使用者的完整回覆文字（語言需與 lang 完全一致）", "stay": true 或 false, "attractions_add": ["景點名稱1", "景點名稱2"]}}"""
 
 travel_brainstormer = Agent(
     name="travel_brainstormer",

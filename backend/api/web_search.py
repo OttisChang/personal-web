@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
-from agents import AGENTS_BY_NAME, Agent, SUB_AGENT_NAMES, build_routing_system, root_agent
+from agents import AGENTS_BY_NAME, Agent, SUB_AGENT_NAMES, build_routing_system, root_agent, strip_thinking
 from database import get_db
 from mcp_tools.weather import get_weather, get_weather_forecast
 
@@ -124,7 +124,7 @@ async def _run_sub_agent(agent: Agent, query: str, history_messages: list[dict],
         user_content = f"{query}\n\n目前已收藏的景點清單：{json.dumps(attractions, ensure_ascii=False)}"
 
     resp = _groq.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="qwen/qwen3-32b",
         messages=[
             {"role": "system", "content": agent.instruction},
             *history_messages,
@@ -133,7 +133,7 @@ async def _run_sub_agent(agent: Agent, query: str, history_messages: list[dict],
         response_format={"type": "json_object"},
     )
     try:
-        data = json.loads(resp.choices[0].message.content or "{}")
+        data = json.loads(strip_thinking(resp.choices[0].message.content) or "{}")
     except Exception:
         data = {}
 
@@ -199,7 +199,7 @@ async def web_search_endpoint(body: WebSearchRequest):
 
     async def generate():
         import asyncio
-        model = "llama-3.3-70b-versatile"
+        model = "qwen/qwen3-32b"
         try:
             current_agent, attractions = await _load_session_state(body.session_id)
 
@@ -240,7 +240,7 @@ async def web_search_endpoint(body: WebSearchRequest):
                     response_format={"type": "json_object"},
                 )
                 try:
-                    routing = json.loads(routing_resp.choices[0].message.content or "{}")
+                    routing = json.loads(strip_thinking(routing_resp.choices[0].message.content) or "{}")
                 except Exception:
                     routing = {"agent": "web_search", "search_query": body.query}
 
@@ -275,10 +275,14 @@ async def web_search_endpoint(body: WebSearchRequest):
                 answer_messages = [
                     {"role": "system", "content": agent.instruction},
                     *history_messages,
-                    {"role": "user", "content": f"問題：{body.query}\n\n資料：\n{tool_result}"},
+                    {"role": "user", "content": (
+                        f"問題：{body.query}\n\n資料：\n{tool_result}\n\n"
+                        "【提醒】請務必使用「問題」中使用者提問所使用的語言作答（例如問題是英文就全程用"
+                        "英文回答），不要被「資料」的語言影響，即使資料是中文，你的回答語言仍要跟著問題走。"
+                    )},
                 ]
                 answer_resp = _groq.chat.completions.create(model=model, messages=answer_messages)
-                answer = answer_resp.choices[0].message.content or "無法取得答案，請稍後再試。"
+                answer = strip_thinking(answer_resp.choices[0].message.content) or "無法取得答案，請稍後再試。"
 
             await _save_session_state(body.session_id, new_current_agent, attractions)
 

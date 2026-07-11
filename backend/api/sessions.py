@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -8,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Response
 from openai import OpenAI
 from pydantic import BaseModel
 
+from agents import strip_thinking
 from database import get_db
 
 router = APIRouter()
@@ -31,22 +33,31 @@ async def _generate_session_title(turns: "List[ConversationTurn]") -> str:
             f"{'用戶' if t.role == 'user' else 'AI'}：{t.content[:300]}"
             for t in turns[-16:]
         )
-        prompt = f"""根據以下完整對話內容，生成一個簡短的標題，要求：
-1. 最多 10 個中文字（2 個英文字算 1 個中文字）
+        prompt = f"""根據以下完整對話內容，生成一個簡短的標題。
+
+規則：
+1. 最多 10 個字（2 個英文字母算 1 個字）
 2. 簡潔明瞭，能概括整段對話主題
-3. 只返回標題，不要其他說明
+3. 只能使用「繁體中文」或「英文」，禁止使用簡體中文字
+4. title 欄位的內容就是標題本身，不要加上「標題」「標題：」等前綴、任何說明文字或引號
 
 對話內容：
 {transcript}
 
-標題："""
+請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
+{{"title": "你生成的標題"}}"""
         resp = _groq.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="qwen/qwen3-32b",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=50,
+            max_tokens=400,
             temperature=0.3,
+            response_format={"type": "json_object"},
         )
-        title = (resp.choices[0].message.content or "").strip().strip('"').strip("'")
+        try:
+            data = json.loads(strip_thinking(resp.choices[0].message.content) or "{}")
+        except Exception:
+            data = {}
+        title = (data.get("title") or "").strip().strip('"').strip("'")
         return title[:15] if title else "新對話"
     except Exception as e:
         logger.error(f"Title generation failed: {e}")
