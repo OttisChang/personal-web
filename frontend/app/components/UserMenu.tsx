@@ -78,7 +78,7 @@ export default function UserMenu({ collapsed = false, onOpenSettings }: UserMenu
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div className="absolute left-full bottom-0 -ml-3 z-50 w-40 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
+          <div className="absolute bottom-full right-1 mb-2 md:bottom-0 md:right-auto md:left-full md:mb-0 md:-ml-3 z-50 w-40 bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
             <button
               onClick={() => { setMenuOpen(false); onOpenSettings?.(); }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-[var(--foreground)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

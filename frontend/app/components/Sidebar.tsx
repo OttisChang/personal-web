@@ -130,7 +130,7 @@ export default function Sidebar() {
       {/* Toast */}
       {toast && (
         <div className="fixed inset-0 z-[101] flex items-center justify-center pointer-events-none">
-          <div className="bg-[var(--foreground)] text-[var(--card)] text-sm px-5 py-2.5 rounded-lg shadow-lg">
+          <div className="translate-y-10 bg-[var(--foreground)] text-[var(--card)] text-sm px-5 py-2.5 rounded-lg shadow-lg">
             {tSidebar('deletedToast')}
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function Sidebar() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <li key={i} className="px-3 py-2.5">
                     <div
-                      className="h-3.5 rounded-md bg-gray-200 dark:bg-gray-800 animate-pulse"
+                      className="h-3.5 rounded-md bg-gray-100 dark:bg-gray-800 skeleton-shimmer"
                       style={{ width: `${85 - i * 10}%` }}
                     />
                   </li>
