@@ -124,7 +124,7 @@ async def _run_sub_agent(agent: Agent, query: str, history_messages: list[dict],
         user_content = f"{query}\n\n目前已收藏的景點清單：{json.dumps(attractions, ensure_ascii=False)}"
 
     resp = _groq.chat.completions.create(
-        model="qwen/qwen3-32b",
+        model="openai/gpt-oss-120b",
         messages=[
             {"role": "system", "content": agent.instruction},
             *history_messages,
@@ -199,7 +199,7 @@ async def web_search_endpoint(body: WebSearchRequest):
 
     async def generate():
         import asyncio
-        model = "qwen/qwen3-32b"
+        model = "openai/gpt-oss-120b"
         try:
             current_agent, attractions = await _load_session_state(body.session_id)
 

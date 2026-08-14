@@ -47,7 +47,7 @@ async def _generate_session_title(turns: "List[ConversationTurn]") -> str:
 請務必只回覆 JSON，不要加任何說明或 markdown，格式為：
 {{"title": "你生成的標題"}}"""
         resp = _groq.chat.completions.create(
-            model="qwen/qwen3-32b",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400,
             temperature=0.3,
