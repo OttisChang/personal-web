@@ -136,6 +136,16 @@ function AnswerBlock({ text }: { text: string }) {
         h2: ({ children }) => <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h2>,
         h3: ({ children }) => <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5 mt-3 first:mt-0">{children}</h3>,
         code: ({ children }) => <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-indigo-600 dark:text-indigo-400">{children}</code>,
+        a: ({ children, href }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 dark:text-indigo-400 underline decoration-indigo-300 dark:decoration-indigo-700 underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300 hover:decoration-indigo-500 dark:hover:decoration-indigo-400 transition-colors"
+          >
+            {children}
+          </a>
+        ),
         hr: () => <hr className="border-gray-200 dark:border-gray-700 my-3" />,
         table: ({ children }) => (
           <div className="overflow-x-auto mb-3 last:mb-0 rounded-lg border border-gray-200 dark:border-gray-700">

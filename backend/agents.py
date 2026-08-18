@@ -67,6 +67,28 @@ financial_agent = Agent(
     routing_examples=('{"agent": "financial_agent"}',),
 )
 
+git_book_agent = Agent(
+    name="git_book_agent",
+    label="Git 知識庫 Agent",
+    description="查詢《Pro Git》書籍內容，回答 Git 指令、概念、原理相關問題",
+    kind="tool_agent",
+    tools=("search_progit_book",),
+    instruction=(
+        f"{_ZH_TW} 你是 Git 助手，請根據以下《Pro Git》書籍摘錄內容回答使用者的問題，"
+        "回答內文不需要逐句標註頁碼。回答的最後請另起一段，統一標明本次引用的頁碼範圍與文本連結，"
+        "格式須為：\n"
+        "參考資料來源：《Pro Git》，頁碼範圍 p.xx-xx\n"
+        "文本連結：<連結>\n"
+        "xx-xx 請填入本次引用摘錄中最小到最大的頁碼（例如摘錄涵蓋 p.40 與 p.45，則寫「頁碼範圍 "
+        "p.40-45」）；<連結> 請一字不漏照抄資料中「文本連結：」後面提供的網址，不可自行編造或修改。"
+        "若摘錄內容不足以回答，誠實告知使用者，不要編造書中沒有的內容，此時不需加上這兩行。"
+    ),
+    judging_hints=(
+        "使用者問 git 指令、概念、用法（branch、merge、rebase、commit、submodule、reflog 等） → git_book_agent",
+    ),
+    routing_examples=('{"agent": "git_book_agent"}',),
+)
+
 web_search_agent = Agent(
     name="web_search",
     label="網路搜尋 Agent",
@@ -154,7 +176,7 @@ class RootAgent:
 
 root_agent = RootAgent(
     name="root",
-    sub_agents=(weather_agent, financial_agent, travel_brainstormer, attractions_planner, web_search_agent),
+    sub_agents=(weather_agent, financial_agent, git_book_agent, travel_brainstormer, attractions_planner, web_search_agent),
 )
 
 AGENTS_BY_NAME: dict[str, Agent] = {a.name: a for a in root_agent.sub_agents}

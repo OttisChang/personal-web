@@ -157,6 +157,16 @@ function AnswerBlock({ text }: { text: string }) {
             {children}
           </code>
         ),
+        a: ({ children, href }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 dark:text-indigo-400 underline decoration-indigo-300 dark:decoration-indigo-700 underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300 hover:decoration-indigo-500 dark:hover:decoration-indigo-400 transition-colors"
+          >
+            {children}
+          </a>
+        ),
         hr: () => <hr className="border-gray-200 dark:border-gray-700 my-3" />,
         table: ({ children }) => (
           <div className="overflow-x-auto mb-3 last:mb-0 rounded-lg border border-gray-200 dark:border-gray-700">
