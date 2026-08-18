@@ -31,7 +31,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.mount("/mcp", app=mcp_server.streamable_http_app())
-# 供 search_progit_book 組出「文本連結」（例如 /static/progit.pdf#page=42）
+# 目前只用來提供 profile_en.json / profile_zh.json；文件類資源（PDF 等）改存 Azure Blob Storage
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "data"), name="static")
 
 if __name__ == "__main__":

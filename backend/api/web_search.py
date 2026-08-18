@@ -96,11 +96,11 @@ async def _handle_esun_exchange_rate(routing: dict, query: str) -> tuple[str, li
     return json.dumps(raw, ensure_ascii=False), [], "玉山銀行匯率"
 
 
-async def _handle_search_progit_book(routing: dict, query: str) -> tuple[str, list[dict], str]:
-    from mcp_tools.progit_rag import search_progit_book as _progit_fn
-    logger.info(f"📖 search_progit_book(query={query})")
-    tool_result = await _progit_fn(query=query)
-    return tool_result, [], "Pro Git"
+async def _handle_search_documents(routing: dict, query: str) -> tuple[str, list[dict], str]:
+    from mcp_tools.document_rag import search_documents as _search_fn
+    logger.info(f"📚 search_documents(query={query})")
+    tool_result = await _search_fn(query=query)
+    return tool_result, [], "知識庫"
 
 
 async def _handle_web_search(routing: dict, query: str) -> tuple[str, list[dict], str]:
@@ -118,7 +118,7 @@ _TOOL_HANDLERS: dict[str, Callable] = {
     "get_weather": _handle_get_weather,
     "get_weather_forecast": _handle_get_weather_forecast,
     "esun_exchange_rate": _handle_esun_exchange_rate,
-    "search_progit_book": _handle_search_progit_book,
+    "search_documents": _handle_search_documents,
     "web_search": _handle_web_search,
 }
 
