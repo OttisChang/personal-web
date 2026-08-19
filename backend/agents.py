@@ -16,6 +16,48 @@ def strip_thinking(text: str) -> str:
     text = _THINK_OPEN_RE.split(text, maxsplit=1)[0]
     return text.strip()
 
+
+def make_think_filter():
+    """串流版的 strip_thinking：逐段餵入模型吐出的 delta，即時濾掉 <think>...</think>
+    區塊，只回傳應該顯示給使用者的文字片段。因為 <think> / </think> 標籤可能被切在兩個
+    delta 之間，未確定不是標籤一部分的尾端字元會先留在內部緩衝區，等下一段或 flush() 時再處理。
+    回傳 (feed, flush)：feed(delta) 逐段呼叫；flush() 在串流結束後呼叫一次，取出剩餘緩衝
+    （若卡在 <think> 內尚未閉合，視同截斷，直接捨棄，行為與 strip_thinking 一致）。"""
+    state = {"in_think": False, "buf": ""}
+    OPEN, CLOSE = "<think>", "</think>"
+
+    def feed(delta: str) -> str:
+        state["buf"] += delta
+        out = []
+        while True:
+            if not state["in_think"]:
+                idx = state["buf"].find(OPEN)
+                if idx == -1:
+                    keep = min(len(state["buf"]), len(OPEN) - 1)
+                    cut = len(state["buf"]) - keep
+                    out.append(state["buf"][:cut])
+                    state["buf"] = state["buf"][cut:]
+                    break
+                out.append(state["buf"][:idx])
+                state["buf"] = state["buf"][idx + len(OPEN):]
+                state["in_think"] = True
+            else:
+                idx = state["buf"].find(CLOSE)
+                if idx == -1:
+                    keep = min(len(state["buf"]), len(CLOSE) - 1)
+                    state["buf"] = state["buf"][len(state["buf"]) - keep:]
+                    break
+                state["buf"] = state["buf"][idx + len(CLOSE):]
+                state["in_think"] = False
+        return "".join(out)
+
+    def flush() -> str:
+        remaining = "" if state["in_think"] else state["buf"]
+        state["buf"] = ""
+        return remaining
+
+    return feed, flush
+
 _ZH_TW = (
     "【最優先語言規則，務必嚴格遵守】請判斷使用者這則提問使用的語言："
     "若使用者以英文提問，請全程使用英文回答，即使參考資料是中文也一樣；"

@@ -121,7 +121,7 @@ function AnswerBlock({ text }: { text: string }) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        p: ({ children }) => <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 last:mb-0">{children}</p>,
+        p: ({ children }) => <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mb-3 last:mb-0 break-words">{children}</p>,
         strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
         em: ({ children }) => <em className="italic text-gray-600 dark:text-gray-400">{children}</em>,
         ol: ({ children }) => <ol className="space-y-2 mb-3 last:mb-0 pl-1">{children}</ol>,
@@ -129,22 +129,27 @@ function AnswerBlock({ text }: { text: string }) {
         li: ({ children }) => (
           <li className="flex gap-2.5 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
             <span className="mt-0.5 shrink-0 text-indigo-400 font-medium">▸</span>
-            <span>{children}</span>
+            <span className="min-w-0 break-words">{children}</span>
           </li>
         ),
         h1: ({ children }) => <h1 className="text-base font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h1>,
         h2: ({ children }) => <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-2 mt-4 first:mt-0">{children}</h2>,
         h3: ({ children }) => <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5 mt-3 first:mt-0">{children}</h3>,
-        code: ({ children }) => <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-indigo-600 dark:text-indigo-400">{children}</code>,
+        code: ({ children }) => <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-xs font-mono text-indigo-600 dark:text-indigo-400 break-words">{children}</code>,
         a: ({ children, href }) => (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-600 dark:text-indigo-400 underline decoration-indigo-300 dark:decoration-indigo-700 underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300 hover:decoration-indigo-500 dark:hover:decoration-indigo-400 transition-colors"
+            className="text-indigo-600 dark:text-indigo-400 underline decoration-indigo-300 dark:decoration-indigo-700 underline-offset-2 hover:text-indigo-700 dark:hover:text-indigo-300 hover:decoration-indigo-500 dark:hover:decoration-indigo-400 transition-colors break-all"
           >
             {children}
           </a>
+        ),
+        pre: ({ children }) => (
+          <pre className="overflow-x-auto mb-3 last:mb-0 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs">
+            {children}
+          </pre>
         ),
         hr: () => <hr className="border-gray-200 dark:border-gray-700 my-3" />,
         table: ({ children }) => (
@@ -304,6 +309,16 @@ export default function SessionPage() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [calledTool, setCalledTool] = useState<CalledTool | null>(null);
+  const [streamingText, setStreamingText] = useState("");
+  // 是否自動跟隨捲動到底部；使用者往上滑就暫停，直到滑回底部或點擊「跳至最新回覆」。
+  // 「跳至最新回覆」按鈕直接以 !autoFollow 顯示，不用獨立 state 依 atBottom 判斷——
+  // 因為程式自己觸發的 smooth 捲動動畫過程中，中間影格也會暫時回報「還沒到底部」，
+  // 若按 atBottom 即時開關按鈕會在動畫途中無意義地閃現又消失
+  const [autoFollow, setAutoFollow] = useState(true);
+  // 程式自己觸發捲動（scrollIntoView）期間也會連帶觸發 scroll 事件；用這個旗標讓
+  // handleScroll 忽略這段期間的事件，否則會被誤判成使用者手動往上滑
+  const isAutoScrollingRef = useRef(false);
+  const autoScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -348,10 +363,51 @@ export default function SessionPage() {
     load();
   }, [sessionId, status, router]);
 
-  // ── Auto-scroll
+  // 觸發捲動到底部，並在期間標記 isAutoScrollingRef，讓 handleScroll 忽略程式自己
+  // 引發的 scroll 事件（smooth 動畫要跑一段時間才會定位，這段期間都要忽略）
+  const scrollToBottom = (behavior: ScrollBehavior) => {
+    isAutoScrollingRef.current = true;
+    messagesEndRef.current?.scrollIntoView({ behavior });
+    clearTimeout(autoScrollTimeoutRef.current);
+    autoScrollTimeoutRef.current = setTimeout(() => {
+      isAutoScrollingRef.current = false;
+    }, behavior === "smooth" ? 600 : 50);
+  };
+
+  // 監看實際捲動的容器（MainContent 的 #app-scroll-container）：純粹依「目前離底部
+  // 多遠」判斷是否還算跟隨中，不用捲動方向猜測——手機觸控捲動常有慣性/回彈造成的微幅
+  // 抖動，方向判斷太容易把使用者根本沒離開底部的情況誤判成「往上滑」
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    const container = document.getElementById("app-scroll-container");
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isAutoScrollingRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      setAutoFollow(distanceFromBottom < 48);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const jumpToLatest = () => {
+    setAutoFollow(true);
+    scrollToBottom("smooth");
+  };
+
+  // ── Auto-scroll：整則訊息新增／載入狀態切換時平滑捲動（使用者已手動往上滑開時絕不強制拉回）
+  useEffect(() => {
+    if (!autoFollow) return;
+    scrollToBottom("smooth");
+  }, [messages, loading, autoFollow]);
+
+  // 文字逐段流入時改用瞬間貼齊，避免密集呼叫 smooth 捲動互相打斷、導致視角追不上最新文字
+  useEffect(() => {
+    if (!streamingText || !autoFollow) return;
+    scrollToBottom("auto");
+  }, [streamingText, autoFollow]);
 
   // ── Focus input
   useEffect(() => {
@@ -378,6 +434,8 @@ export default function SessionPage() {
     setLoading(true);
     setLoadingStep(0);
     setCalledTool(null);
+    setStreamingText("");
+    setAutoFollow(true);
     plansRef.current = [];
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -458,6 +516,8 @@ export default function SessionPage() {
           } else if (event.type === "executing") {
             plansRef.current = [...plansRef.current, { sort: 3, plan: "executing: 生成答案" }];
             setLoadingStep(2);
+          } else if (event.type === "answer_chunk") {
+            setStreamingText((prev) => prev + ((event.delta as string) ?? ""));
           } else if (event.type === "done") {
             const newAiMsg: DisplayMessage = {
               role: "assistant",
@@ -488,6 +548,7 @@ export default function SessionPage() {
       isSubmittingRef.current = false;
       setLoading(false);
       setCalledTool(null);
+      setStreamingText("");
       abortControllerRef.current = null;
     }
   };
@@ -519,7 +580,7 @@ export default function SessionPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-dvh bg-[var(--background)]">
+    <main className="flex flex-col min-h-dvh bg-[var(--background)] overflow-x-hidden">
       {/* 頂部遮罩層 — 避免對話內容捲動時與標題列/按鈕重疊 */}
       <div className="header-fade-mask fixed top-0 left-0 right-4 z-[5] h-24 pointer-events-none" />
 
@@ -535,7 +596,7 @@ export default function SessionPage() {
       </div>
 
       {/* Messages area */}
-      <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-64 space-y-6 ${px}`}>
+      <div className={`flex-1 max-w-2xl mx-auto w-full pt-20 pb-32 sm:pb-36 space-y-6 ${px}`}>
         {messages.map((msg, idx) => {
           if (msg.role === "user") {
             return (
@@ -579,7 +640,7 @@ export default function SessionPage() {
 
               <ThinkingProcess plans={msg.plans} t={t} />
 
-              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50">
+              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50 overflow-hidden">
                 <AnswerBlock text={msg.content} />
               </div>
 
@@ -601,10 +662,47 @@ export default function SessionPage() {
           );
         })}
 
-        {loading && <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />}
+        {loading && (
+          streamingText ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <BotMessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
+                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{t("aiAnswer")}</span>
+                {calledTool && TOOL_META[calledTool.tool] && (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${TOOL_META[calledTool.tool].color}`}>
+                    {TOOL_META[calledTool.tool].icon}
+                    {toolLabel(t, calledTool.tool)}
+                  </span>
+                )}
+              </div>
+              <ThinkingProcess plans={plansRef.current} t={t} />
+              <div className="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-white dark:bg-gray-900/50 overflow-hidden">
+                <AnswerBlock text={streamingText} />
+              </div>
+            </div>
+          ) : (
+            <LoadingCard step={loadingStep} calledTool={calledTool} t={t} />
+          )
+        )}
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* 跳至最新回覆：使用者往上滑暫停自動跟隨後浮現，點擊才平滑捲回底部並重新啟用跟隨 */}
+      {!autoFollow && (
+        <div className="fixed bottom-20 sm:bottom-24 left-16 right-0 flex justify-center z-20 pointer-events-none">
+          <button
+            type="button"
+            onClick={jumpToLatest}
+            className="pointer-events-auto flex items-center gap-1.5 px-4 py-2 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium shadow-lg shadow-indigo-500/30 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7" />
+            </svg>
+            {t("jumpToLatest")}
+          </button>
+        </div>
+      )}
 
       {/* Fixed bottom input bar */}
       <div className="fixed bottom-0 left-16 right-0 footer-fade-mask pt-8 pb-4">

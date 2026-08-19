@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel
 
-from agents import AGENTS_BY_NAME, Agent, SUB_AGENT_NAMES, build_routing_system, root_agent, strip_thinking
+from agents import AGENTS_BY_NAME, Agent, SUB_AGENT_NAMES, build_routing_system, make_think_filter, root_agent, strip_thinking
 from database import get_db
 from mcp_tools.weather import get_weather, get_weather_forecast
 
@@ -289,8 +289,31 @@ async def web_search_endpoint(body: WebSearchRequest):
                         "英文回答），不要被「資料」的語言影響，即使資料是中文，你的回答語言仍要跟著問題走。"
                     )},
                 ]
-                answer_resp = _groq.chat.completions.create(model=model, messages=answer_messages)
-                answer = strip_thinking(answer_resp.choices[0].message.content) or "無法取得答案，請稍後再試。"
+                # 用串流模式即時把每個 token 送到前端，同時用 think_filter 把
+                # <think>...</think> 推理區塊濾掉，只把正式回答的片段吐給使用者
+                feed, flush = make_think_filter()
+                visible_answer = ""
+                answer_stream = _groq.chat.completions.create(model=model, messages=answer_messages, stream=True)
+                for chunk in answer_stream:
+                    delta = chunk.choices[0].delta.content or ""
+                    if not delta:
+                        continue
+                    visible = feed(delta)
+                    if visible:
+                        visible_answer += visible
+                        yield _sse({"type": "answer_chunk", "delta": visible})
+                        await asyncio.sleep(0)
+                tail = flush()
+                if tail:
+                    visible_answer += tail
+                    yield _sse({"type": "answer_chunk", "delta": tail})
+                    await asyncio.sleep(0)
+                answer = visible_answer.strip() or "無法取得答案，請稍後再試。"
+            else:
+                # sticky / sub-agent 分支答案已在路由階段透過 JSON mode 一次生成完畢，
+                # 無法逐字串流，直接整段當作一個 chunk 送出，維持前端事件處理一致
+                yield _sse({"type": "answer_chunk", "delta": answer})
+                await asyncio.sleep(0)
 
             await _save_session_state(body.session_id, new_current_agent, attractions)
 

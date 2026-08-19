@@ -82,6 +82,7 @@
     "stepAnalyze": "Analyzing results",
     "stepGenerate": "Generating answer...",
     "thinkingProcess": "Thinking process",
+    "jumpToLatest": "Scroll to bottom",
     "toolInvoked": "Called {tool}",
     "toolProcessing": "{tool} processing",
     "tools": {

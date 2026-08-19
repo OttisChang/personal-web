@@ -82,6 +82,7 @@
     "stepAnalyze": "分析搜尋結果",
     "stepGenerate": "生成回答中...",
     "thinkingProcess": "思考歷程",
+    "jumpToLatest": "滾動至最底部",
     "toolInvoked": "調用 {tool}",
     "toolProcessing": "{tool} 處理中",
     "tools": {
