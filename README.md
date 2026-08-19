@@ -5,6 +5,7 @@
 ## ✨ 核心功能 (Key Features)
 
 *   **🤖 Multi-Agent AI Search:** Root Agent 透過 OpenAI 開源的 `gpt-oss-120b` 模型進行意圖路由，將問題分派給對應的 Sub Agent 處理，每個 Sub Agent 各自掛載不同的工具、或使用不同的 System Prompt，並以 SSE 串流即時回傳分派過程與最終答案。
+*   **📚 知識庫 RAG 檢索:** `knowledge_base_agent` 以 Voyage AI `voyage-context-4` 對內部文件（《Pro Git》、《Google Cloud: 生成式 AI 瞭解基礎概念》）做語意向量搜尋（MongoDB Atlas Vector Search），回答附上頁碼範圍與可跳頁的文本連結（Azure Blob Storage）。
 *   **🔐 Google OAuth 登入與對話紀錄:** 透過 NextAuth 整合 Google 登入，對話內容持久化儲存於 MongoDB，支援對話列表查詢與刪除。
 *   **🌐 國際化 (i18n):** 實作多國語系，支援中/英文內容無縫切換。
 *   **🌓 深淺主題 (Dark/Light Mode):** 實作流暢的深淺色模式切換，提供最佳的使用者閱讀體驗。
@@ -20,20 +21,20 @@ AI Search 採用 **Root Agent + Sub Agent** 的兩層架構（[backend/agents.py
                         │ （LLM JSON 路由分類） │
                         └──────────┬──────────┘
                                    │ 依 judging_hints 判斷意圖
-              ┌────────────────────┼────────────────────┐
-              ▼                    ▼                     ▼
-      ┌───────────────┐   ┌────────────────┐   ┌──────────────────┐
-      │  tool_agent    │   │  tool_agent    │   │    sub_agent      │
-      │ weather_agent  │   │financial_agent │   │ travel_brainstormer│
-      │                │   │                │   │ attractions_planner│
-      │ 掛載 MCP Tool： │   │ 掛載 MCP Tool： │   │ 無外部工具，       │
-      │ get_weather     │   │ esun_exchange_ │   │ 改用專屬 System   │
-      │ get_weather_    │   │ rate           │   │ Prompt 對話，依   │
-      │ forecast        │   │                │   │ JSON 欄位維護對話狀態│
-      └───────┬────────┘   └───────┬────────┘   └─────────┬─────────┘
-              │                    │                        │
-              └────────────────────┼────────────────────────┘
-                                   ▼
+         ┌─────────────────┬───────┴────────┬─────────────────┐
+         ▼                 ▼                ▼                  ▼
+┌───────────────┐ ┌────────────────┐ ┌────────────────┐ ┌──────────────────┐
+│  tool_agent    │ │  tool_agent    │ │  tool_agent    │ │    sub_agent      │
+│ weather_agent  │ │financial_agent │ │knowledge_base_ │ │ travel_brainstormer│
+│                │ │                │ │agent           │ │ attractions_planner│
+│ 掛載 MCP Tool： │ │ 掛載 MCP Tool： │ │ 掛載 MCP Tool： │ │ 無外部工具，       │
+│ get_weather     │ │ esun_exchange_ │ │ search_         │ │ 改用專屬 System   │
+│ get_weather_    │ │ rate           │ │ documents       │ │ Prompt 對話，依   │
+│ forecast        │ │                │ │（向量檢索 RAG） │ │ JSON 欄位維護對話狀態│
+└───────┬────────┘ └───────┬────────┘ └───────┬────────┘ └─────────┬─────────┘
+        │                  │                   │                    │
+        └──────────────────┼───────────────────┼────────────────────┘
+                            ▼
                     ┌──────────────────────────┐
                     │  tool_agent: web_search    │
                     │  掛載 DuckDuckGo 搜尋工具   │
@@ -52,6 +53,7 @@ AI Search 採用 **Root Agent + Sub Agent** 的兩層架構（[backend/agents.py
 |---|---|---|---|
 | `weather_agent` | `tool_agent` | MCP Tool：`get_weather`、`get_weather_forecast` | 查詢即時天氣（中央氣象署 / Open-Meteo）或台灣縣市未來 36 小時預報 |
 | `financial_agent` | `tool_agent` | MCP Tool：`esun_exchange_rate` | 查詢玉山銀行即時外幣牌告匯率 |
+| `knowledge_base_agent` | `tool_agent` | MCP Tool：`search_documents` | 對內部知識庫文件（《Pro Git》、《Google Cloud: 生成式 AI 瞭解基礎概念》）做向量語意搜尋，回答附頁碼範圍與文本連結 |
 | `web_search` | `tool_agent` | DuckDuckGo 網路搜尋 | 一般問題的預設 fallback，無法歸類到其他 Agent 時使用 |
 | `travel_brainstormer` | `sub_agent` | 無外部工具，改用專屬 System Prompt | 協助還沒決定旅遊目的地的使用者，依動機推薦國家／城市 |
 | `attractions_planner` | `sub_agent` | 無外部工具，改用專屬 System Prompt | 使用者已選定目的地後，推薦具體景點並累積「想去景點清單」 |
@@ -71,8 +73,11 @@ AI Search 採用 **Root Agent + Sub Agent** 的兩層架構（[backend/agents.py
 *   Python / FastAPI
 *   Multi-Agent 路由架構（Root Agent + Sub Agent，[backend/agents.py](backend/agents.py)）
 *   MCP（Model Context Protocol）Tools（天氣、匯率）
+*   知識庫 RAG 檢索
 *   OpenAI 開源 `gpt-oss-120b` 模型（使用 Function Calling / JSON Mode）
-*   MongoDB（Motor 非同步驅動，儲存對話紀錄與 Agent 狀態）
+*   MongoDB（Motor 非同步驅動，儲存對話紀錄與 Agent 狀態；Atlas Vector Search 儲存文件 embedding）
+*   Voyage AI `voyage-context-4`（Contextualized Embedding，用於知識庫語意搜尋）
+*   Azure Blob Storage（知識庫來源 PDF 儲存，供引用連結跳頁）
 
 ---
 

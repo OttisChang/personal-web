@@ -34,7 +34,7 @@ async def _embed_query(query: str) -> list[float]:
         "在內部知識庫（多份文件）全文中做語意搜尋，回傳最相關的段落，附頁碼與來源引用。\n\n"
         "知識庫目前收錄的文件（每次新增文件到 document_chunks 後，請更新這份清單）：\n"
         "- 《Pro Git》：Git 指令、概念、原理、最佳實踐\n"
-        "- 《生成式AI基礎概念》：生成式 AI 基礎概念\n\n"
+        "- 《Google Cloud: 生成式 AI 瞭解基礎概念》：生成式 AI 基礎概念\n\n"
         "**參數：** query — 使用者問題的關鍵字或完整問題"
     ),
 )
